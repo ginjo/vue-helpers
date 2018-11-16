@@ -21,6 +21,7 @@ module Vue
       script_wrapper
       root_wrapper
       root_el
+      root_name
       callback_prefix
     )
   end
@@ -28,6 +29,7 @@ module Vue
   self.cache_store = {}
   self.render_proc = Proc.new {|string| erb(string, layout:false)}
   self.callback_prefix = '/vuecallback'
+  self.root_name = "vue-app"
   
   
   # Instance represents a single vue root and all of its components.
@@ -44,7 +46,7 @@ module Vue
   # Include this module in your controller (or action, or route, or whatever).
   module Helper
     
-    def vue_helper(root_name = :default)
+    def vue_helper(root_name = Vue.root_name)
       @vue_helper ||= {}
       @vue_helper[root_name.to_s] ||= RootApp.new
     end
@@ -70,8 +72,8 @@ module Vue
       script.gsub!(/export\s+default\s*\{/, "Vue.component('#{name}', {template: `#{template}`,") << ")"
     end
 
-    def vue_component(name, attributes:{}, tag:nil)
-      vue_helper.components[name] = compile_vue_js(*parse_vue_sfc(:"#{name}.vue"))
+    def vue_component(name, root_name = Vue.root_name, attributes:{}, tag:nil)
+      vue_helper(root_name).components[name] = compile_vue_js(*parse_vue_sfc(:"#{name}.vue"))
 
       if tag
         attributes['is'] = name
@@ -93,38 +95,36 @@ module Vue
       buffer << instance_exec(interpolated_output_template, &Vue.render_proc)
     end
 
-    def build_vue
-      @_build_vue ||= (
-        root ||= ""
-        components = vue_helper.components
-        if components.is_a?(Hash) && components.size > 0 && values=components.values
-          root << values.join(";\n")
-          root << ";\n"
-        
-          wrapper = Vue.root_wrapper || <<-'EEOOFF'
-            var App = new Vue({
-              el: (Vue.root_el || '#vue-app'),
-              data: #{vue_data_json}
-            })
-          EEOOFF
-                
-          root << wrapper.interpolate(vue_data_json: vue_helper.data.to_json)
-        end
-      ) 
+    def build_vue(root_name = Vue.root_name) 
+      root ||= ""
+      components = vue_helper(root_name).components
+      if components.is_a?(Hash) && components.size > 0 && values=components.values
+        root << values.join(";\n")
+        root << ";\n"
+      
+        wrapper = Vue.root_wrapper || <<-'EEOOFF'
+          var App = new Vue({
+            el: (Vue.root_el || '##{root_name}'),
+            data: #{vue_data_json}
+          })
+        EEOOFF
+              
+        root << wrapper.interpolate(vue_data_json: vue_helper(root_name).data.to_json, root_name: root_name)
+      end
     end
 
-    def yield_vue
+    def yield_vue(root_name = Vue.root_name)
       #puts "VUE: #{vue}"
-      return unless build_vue
-      wrapper = Vue.yield_wrapper || '<script>#{build_vue}</script>'
-      interpolated_wrapper = wrapper.interpolate(build_vue: build_vue)
+      return unless compiled = build_vue(root_name)
+      wrapper = Vue.yield_wrapper || '<script>#{compiled}</script>'
+      interpolated_wrapper = wrapper.interpolate(build_vue: compiled)
     end
 
-    def source_vue
-      return unless build_vue
+    def source_vue(root_name = Vue.root_name)
+      return unless compiled = build_vue(root_name)
       key = secure_key
       callback_prefix = Vue.callback_prefix
-      Vue.cache_store[key] = build_vue
+      Vue.cache_store[key] = compiled
       wrapper = Vue.script_wrapper || '<script src="#{callback_prefix}/#{key}"></script>'
       interpolated_wrapper = wrapper.interpolate(callback_prefix: callback_prefix, key: key)
     end      
