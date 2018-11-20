@@ -46,7 +46,7 @@ module Vue
   self.root_name = "vue-app"
   
   self.template_proc = Proc.new do |str_or_sym, locals:{}|
-    puts "CAlling template_proc with str_or_sym: #{str_or_sym}, and locals: #{locals}"
+    #puts "CAlling template_proc with str_or_sym: #{str_or_sym}, and locals: #{locals}"
     tilt_template = \
       begin
         case str_or_sym
@@ -150,7 +150,7 @@ module Vue
       raw = render_ruby_template(template_file, locals:locals)
       name = template_file.to_s.split(/[. ]/)[0]
       a,template,c,script = raw.to_s.match(/(<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
-      puts "PARSE_vue_sfc result: #{[template,script]}"
+      #puts "PARSE_vue_sfc result: #{[template,script]}"
       [name, template, script]
     end
     
@@ -203,7 +203,7 @@ module Vue
   end # Helper
 
   
-  # Middleware to serve sourced vue block, see https://redpanthers.co/rack-middleware/.
+  # Rack middleware to serve sourced vue block, see https://redpanthers.co/rack-middleware/.
   class Source
     def initialize(app)
       @app = app
