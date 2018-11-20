@@ -27,7 +27,17 @@ module Vue
   end
   
   self.cache_store = {}
-  self.render_proc = Proc.new {|string| erb(string, layout:false)}
+  #self.render_proc = Proc.new {|string| erb(string, layout:false)}
+  self.render_proc = Proc.new do |str_or_sym|
+    puts "CAlling render_proc with str_or_sym: #{str_or_sym}"
+    input_string = case str_or_sym
+      when File; File.read(str_or_sym)
+      when Symbol; File.read(File.join(Dir.getwd, 'app', 'views', "#{str_or_sym.to_s}.erb" ))
+      when String; str_or_sym
+    end
+    puts "CAlling render_proc with input_string: #{input_string}"
+    ERB.new(input_string).result(binding)
+  end
   self.callback_prefix = '/vuecallback'
   self.root_name = "vue-app"
   
@@ -84,11 +94,11 @@ module Vue
       el_name = tag || name
 
       #block_output = erb(<<-EEOOFF, layout:false)
-      raw_output_template = Vue.component_wrapper || <<-'EEOOFF'
+      raw_output_template = Vue.component_wrapper || "
         <#{el_name} #{attributes_string}>
           #{text}
         </#{el_name}>
-      EEOOFF
+      "
       
       interpolated_output_template = raw_output_template.interpolate(name: name, tag: tag, el_name: el_name, text: text, attributes_string: attributes_string)
       #buffer << block_output
