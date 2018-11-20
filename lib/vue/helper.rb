@@ -1,10 +1,16 @@
 require "vue/helper/version"
 require 'securerandom'
+require 'erb'
+require 'tilt'
 
 module StringRefinements
   refine String do
     def interpolate(**locals)
       gsub(/\#\{/, '%{') % locals
+    end
+    
+    def camelize
+      split(/[_-]/).collect(&:capitalize).join
     end
   end
 end
@@ -13,9 +19,13 @@ module Vue
   using StringRefinements
   
   class << self
+    # Class defaults.
+    # TODO: Copy these, as hash, to helper instance,
+    # then allow helper to change them if necessary (through vue_component or yield_vue or source_vue methods).
+    # Not yet, that's a deeper level of customization. Maybe next version. Remember that the helper instance only lasts for one request cycle.
     attr_accessor *%w(
       cache_store
-      render_proc
+      template_proc
       component_wrapper
       yield_wrapper
       script_wrapper
@@ -23,23 +33,28 @@ module Vue
       root_el
       root_name
       callback_prefix
+      template_engine
+      views_path
     )
   end
   
   self.cache_store = {}
-  #self.render_proc = Proc.new {|string| erb(string, layout:false)}
-  self.render_proc = Proc.new do |str_or_sym|
-    puts "CAlling render_proc with str_or_sym: #{str_or_sym}"
-    input_string = case str_or_sym
-      when File; File.read(str_or_sym)
-      when Symbol; File.read(File.join(Dir.getwd, 'app', 'views', "#{str_or_sym.to_s}.erb" ))
-      when String; str_or_sym
-    end
-    puts "CAlling render_proc with input_string: #{input_string}"
-    ERB.new(input_string).result(binding)
-  end
+  #self.template_proc = Proc.new {|string| erb(string, layout:false)}
+  self.template_engine = 'ERB'
+  self.views_path = 'app/views'
   self.callback_prefix = '/vuecallback'
   self.root_name = "vue-app"
+  
+  self.template_proc = Proc.new do |str_or_sym, locals:{}|
+    puts "CAlling template_proc with str_or_sym: #{str_or_sym}, and locals: #{locals}"
+    tilt_template = case str_or_sym
+      when Symbol; Tilt.new(File.join(Dir.getwd, Vue.views_path, "#{str_or_sym.to_s}.vue.#{Vue.template_engine.downcase}"))
+      when String; Tilt.const_get("#{Vue.template_engine}Template").new(){str_or_sym}
+    end
+    tilt_template.render(binding, **locals)
+  end
+  
+
   
   
   # Instance represents a single vue root and all of its components.
@@ -55,74 +70,45 @@ module Vue
   
   # Include this module in your controller (or action, or route, or whatever).
   module Helper
-    
-    def vue_helper(root_name = Vue.root_name)
-      @vue_helper ||= {}
-      @vue_helper[root_name.to_s] ||= RootApp.new
-    end
 
-    # Buffer tricks allow addition of 'capture' method. From https://gist.github.com/seanami/496702
-    def buffer
-      @_out_buf
-    end
-    def capture(buffer)
-      pos = buffer.size
-      yield
-      buffer.slice!(pos..buffer.size)
-    end
+    # Inserts Vue component-call block in html template.
+    # Name & file_name refer to file-name.vue.<template_engine> SFC file. Example: products.vue.erb.
+    def vue_component(name, root_name = Vue.root_name, attributes:{}, tag:nil, file_name:nil, locals:{})
+      
+      # Parses SFC file, evaluating template code if exists.
+      parsed_sfc = parse_vue_sfc((file_name || name).to_sym, locals:locals)
+      
+      # Compiles Vue.componenent definition from parsed SFC into a RootApp,
+      # and store the resulting JS code in @vue_root hash.
+      vue_root(root_name).components[name] = compile_vue_js(*parsed_sfc)
 
-    def parse_vue_sfc(erb_file)  # TODO: file_or_string
-      raw = instance_exec(erb_file, &Vue.render_proc) #erb(erb_file, layout:false)
-      name = erb_file.to_s.split(/[. ]/)[0]
-      template, script = raw.to_s.match(/<template>(.*)<\/template>.*<script>(.*)<\/script>/m).to_a[1..-1]
-      [name, template, script]
-    end
-
-    def compile_vue_js(name, template, script)
-      script.gsub!(/export\s+default\s*\{/, "Vue.component('#{name}', {template: `#{template}`,") << ")"
-    end
-
-    def vue_component(name, root_name = Vue.root_name, attributes:{}, tag:nil)
-      vue_helper(root_name).components[name] = compile_vue_js(*parse_vue_sfc(:"#{name}.vue"))
-
+      # Adds 'is' attribute to html vue-component element,
+      # if the user specifies an alternate 'tag' (default tag is name-of-component).
+      el_name = tag || name
       if tag
         attributes['is'] = name
       end
-      
+            
+      # Compiles attributes string from given ruby hash.
       attributes_string = attributes.inject(''){|o, kv| o.to_s << "#{kv[0]}=\"#{kv[1]}\" "}
+      
+      # Captures block of text passed to vue_component method.
       text = capture(buffer, &Proc.new)
-      el_name = tag || name
 
-      #block_output = erb(<<-EEOOFF, layout:false)
+      # Gets vue-component html tags.
       raw_output_template = Vue.component_wrapper || "
         <#{el_name} #{attributes_string}>
           #{text}
         </#{el_name}>
       "
       
-      interpolated_output_template = raw_output_template.interpolate(name: name, tag: tag, el_name: el_name, text: text, attributes_string: attributes_string)
-      #buffer << block_output
-      buffer << instance_exec(interpolated_output_template, &Vue.render_proc)
-    end
-
-    def build_vue(root_name = Vue.root_name) 
-      root ||= ""
-      components = vue_helper(root_name).components
-      if components.is_a?(Hash) && components.size > 0 && values=components.values
-        root << values.join(";\n")
-        root << ";\n"
+      # Inserts data into vue-component html block. 
+      interpolated_output_template = raw_output_template.interpolate(name:name, tag:tag, el_name:el_name, text:text, attributes_string:attributes_string)
       
-        wrapper = Vue.root_wrapper || <<-'EEOOFF'
-          var App = new Vue({
-            el: (Vue.root_el || '##{root_name}'),
-            data: #{vue_data_json}
-          })
-        EEOOFF
-              
-        root << wrapper.interpolate(vue_data_json: vue_helper(root_name).data.to_json, root_name: root_name)
-      end
-    end
-
+      # Evaluates entire vue-component html block as template, and adds to output buffer.
+      buffer << eval_ruby_template(interpolated_output_template, locals:locals)
+    end  
+  
     def yield_vue(root_name = Vue.root_name)
       #puts "VUE: #{vue}"
       return unless compiled = build_vue(root_name)
@@ -137,7 +123,68 @@ module Vue
       Vue.cache_store[key] = compiled
       wrapper = Vue.script_wrapper || '<script src="#{callback_prefix}/#{key}"></script>'
       interpolated_wrapper = wrapper.interpolate(callback_prefix: callback_prefix, key: key)
-    end      
+    end     
+    
+    
+    ### private
+    
+    # Stores all root apps defined by vue-helper, plus their compiled components.
+    def vue_root(root_name = Vue.root_name)
+      @vue_root ||= {}
+      @vue_root[root_name.to_s] ||= RootApp.new
+    end
+
+    # Buffer tricks allow addition of 'capture' method for erb. From https://gist.github.com/seanami/496702
+    def buffer
+      @_out_buf
+    end
+    def capture(buffer)
+      pos = buffer.size
+      yield
+      buffer.slice!(pos..buffer.size)
+    end
+
+    def parse_vue_sfc(template_file, locals:{})  # TODO: file_or_string. (I think it already does).
+      raw = eval_ruby_template(template_file, locals:locals)
+      name = template_file.to_s.split(/[. ]/)[0]
+      a,template,c,script = raw.to_s.match(/(<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
+      puts "PARSE_vue_sfc result: #{[template,script]}"
+      [name, template, script]
+    end
+    
+    def eval_ruby_template(template_text_or_file, locals:{})
+      instance_exec(template_text_or_file, locals:locals, &Vue.template_proc)
+    end
+
+    def compile_vue_js(name, template, script)
+      script.gsub!(/export\s+default\s*\{/, "Vue.component('#{name}', {template: `#{template}`,") << ")"
+    end
+
+    def build_vue(root_name = Vue.root_name, file_name:root_name, app_name:root_name.camelize) 
+      root ||= ""
+      components = vue_root(root_name).components
+      if components.is_a?(Hash) && components.size > 0 && values=components.values
+        root << values.join(";\n")
+        root << ";\n"
+      
+        wrapper = Vue.root_wrapper ||
+          parse_vue_sfc(file_name.to_sym, locals: {
+            root_name:     root_name,
+            app_name:      app_name,
+            file_name:     file_name,
+            vue_data_json: vue_root(root_name).data.to_json
+          })[2] #||
+          # <<-'EEOOFF'
+          #   var #{app_name} = new Vue({
+          #     el: (Vue.root_el || '##{root_name}'),
+          #     data: #{vue_data_json}
+          #   })
+          # EEOOFF
+              
+        #root << wrapper.interpolate(vue_data_json: vue_root(root_name).data.to_json, root_name: root_name)
+        root << wrapper
+      end
+    end 
         
     def secure_key
       SecureRandom.urlsafe_base64(32)
