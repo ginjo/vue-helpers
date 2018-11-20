@@ -47,14 +47,18 @@ module Vue
   
   self.template_proc = Proc.new do |str_or_sym, locals:{}|
     puts "CAlling template_proc with str_or_sym: #{str_or_sym}, and locals: #{locals}"
-    tilt_template = case str_or_sym
-      when Symbol; Tilt.new(File.join(Dir.getwd, Vue.views_path, "#{str_or_sym.to_s}.vue.#{Vue.template_engine.downcase}"))
-      when String; Tilt.const_get("#{Vue.template_engine}Template").new(){str_or_sym}
-    end
-    tilt_template.render(binding, **locals)
+    tilt_template = \
+      begin
+        case str_or_sym
+        when Symbol; Tilt.new(File.join(Dir.getwd, Vue.views_path, "#{str_or_sym.to_s}.vue.#{Vue.template_engine.downcase}"))
+        when String; Tilt.const_get("#{Vue.template_engine}Template").new(){str_or_sym}
+        end
+      rescue
+        puts "Template proc: File not found: #{str_or_sym}"
+        nil
+      end
+    tilt_template.render(binding, **locals) if tilt_template.is_a?(Tilt::Template)
   end
-  
-
   
   
   # Instance represents a single vue root and all of its components.
@@ -93,30 +97,28 @@ module Vue
       attributes_string = attributes.inject(''){|o, kv| o.to_s << "#{kv[0]}=\"#{kv[1]}\" "}
       
       # Captures block of text passed to vue_component method.
-      text = capture(buffer, &Proc.new)
-
+      text = capture(buffer, &Proc.new)      
+      
       # Gets vue-component html tags.
-      raw_output_template = Vue.component_wrapper || "
-        <#{el_name} #{attributes_string}>
-          #{text}
-        </#{el_name}>
+      component_block_template = Vue.component_wrapper || "
+        <<%= el_name %> <%= attributes_string %>>
+          <%= text %>
+        </<%= el_name %>>
       "
-      
-      # Inserts data into vue-component html block. 
-      interpolated_output_template = raw_output_template.interpolate(name:name, tag:tag, el_name:el_name, text:text, attributes_string:attributes_string)
-      
       # Evaluates entire vue-component html block as template, and adds to output buffer.
-      buffer << eval_ruby_template(interpolated_output_template, locals:locals)
+      buffer << render_ruby_template(component_block_template,  locals:{name:name, tag:tag, el_name:el_name, text:text, attributes_string:attributes_string}.merge(locals:locals))
     end  
   
-    def yield_vue(root_name = Vue.root_name)
+    # Ouputs html script block of entire collection of vue roots and components.
+    def vue_yield(root_name = Vue.root_name)
       #puts "VUE: #{vue}"
       return unless compiled = build_vue(root_name)
       wrapper = Vue.yield_wrapper || '<script>#{compiled}</script>'
       interpolated_wrapper = wrapper.interpolate(build_vue: compiled)
     end
 
-    def source_vue(root_name = Vue.root_name)
+    # Outputs html script block with src pointing to tmp file on server.
+    def vue_src(root_name = Vue.root_name)
       return unless compiled = build_vue(root_name)
       key = secure_key
       callback_prefix = Vue.callback_prefix
@@ -145,14 +147,14 @@ module Vue
     end
 
     def parse_vue_sfc(template_file, locals:{})  # TODO: file_or_string. (I think it already does).
-      raw = eval_ruby_template(template_file, locals:locals)
+      raw = render_ruby_template(template_file, locals:locals)
       name = template_file.to_s.split(/[. ]/)[0]
       a,template,c,script = raw.to_s.match(/(<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
       puts "PARSE_vue_sfc result: #{[template,script]}"
       [name, template, script]
     end
     
-    def eval_ruby_template(template_text_or_file, locals:{})
+    def render_ruby_template(template_text_or_file, locals:{})
       instance_exec(template_text_or_file, locals:locals, &Vue.template_proc)
     end
 
@@ -167,21 +169,29 @@ module Vue
         root << values.join(";\n")
         root << ";\n"
       
-        wrapper = Vue.root_wrapper ||
+        wrapper = (
+          # User defined wrapper in class variable.
+          Vue.root_wrapper ||
+        
+          # User defined wrapper in <root_name>.vue.<Vue.template_engine>.
           parse_vue_sfc(file_name.to_sym, locals: {
             root_name:     root_name,
             app_name:      app_name,
             file_name:     file_name,
             vue_data_json: vue_root(root_name).data.to_json
-          })[2] #||
-          # <<-'EEOOFF'
-          #   var #{app_name} = new Vue({
-          #     el: (Vue.root_el || '##{root_name}'),
-          #     data: #{vue_data_json}
-          #   })
-          # EEOOFF
-              
-        #root << wrapper.interpolate(vue_data_json: vue_root(root_name).data.to_json, root_name: root_name)
+          })[2] ||
+          
+          # Default wrapper.
+          render_ruby_template("
+            var <%= app_name %> = new Vue({
+              el: (Vue.root_el || '#<%= root_name %>'),
+              data: <%= vue_data_json %>
+            })
+          ",
+            locals: {vue_data_json:vue_root(root_name).data.to_json, root_name:root_name, app_name:app_name}
+          )
+        ) # end-of-wrapper
+        
         root << wrapper
       end
     end 
@@ -193,7 +203,7 @@ module Vue
   end # Helper
 
   
-  # Middleware to handle sourced vue block, see https://redpanthers.co/rack-middleware/.
+  # Middleware to serve sourced vue block, see https://redpanthers.co/rack-middleware/.
   class Source
     def initialize(app)
       @app = app
