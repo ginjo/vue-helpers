@@ -1,11 +1,11 @@
 
 lib = File.expand_path("../lib", __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require "vue/helper/version"
+require "vue/helpers/version"
 
 Gem::Specification.new do |spec|
-  spec.name          = "vue-helper"
-  spec.version       = Vue::Helper::VERSION
+  spec.name          = "vue-helpers"
+  spec.version       = Vue::Helpers::VERSION
   spec.authors       = ["Ginjo"]
   spec.email         = ["wbr@mac.com"]
 

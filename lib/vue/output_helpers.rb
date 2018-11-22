@@ -231,6 +231,6 @@ module Vue
 end
 
 #FileSet.glob_require('output_helpers/**/*.rb', __FILE__)
-Dir[File.join(__dir__, 'helpers', '*.rb')].each { |file| require file }
-require_relative 'output_safety'
+Dir[File.join(__dir__, 'output_helpers', 'helpers', '*.rb')].each { |file| require file }
+require_relative 'output_helpers/output_safety'
 

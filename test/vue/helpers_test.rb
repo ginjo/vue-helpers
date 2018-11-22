@@ -1,6 +1,6 @@
 require "test_helper"
 
-class Vue::HelperTest < Minitest::Test
+class Vue::HelpersTest < Minitest::Test
   def test_that_it_has_a_version_number
     refute_nil ::Vue::Helper::VERSION
   end

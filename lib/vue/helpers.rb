@@ -1,9 +1,9 @@
-require "vue/helper/version"
+require "vue/helpers/version"
 require 'securerandom'
 require 'erb'
 require 'tilt'
 
-require 'output_helpers/output_helpers'
+require 'vue/output_helpers'
 
 module StringRefinements
   refine String do
@@ -50,7 +50,7 @@ module Vue
   self.yield_wrapper = '<script>#{compiled}</script>'
   self.script_wrapper = '<script src="#{callback_prefix}/#{key}"></script>'
   
-  # TODO: I think this should be a regular method in Helper module.
+  # TODO: I think this should be a regular method in Helpers module.
   self.template_proc = Proc.new do |str_or_sym, locals:{}, template_engine:current_template_engine|
     puts "CAlling template_proc with str_or_sym: \"#{str_or_sym.to_s[0..24].gsub(/\n/, ' ')}\", locals: #{locals}, template_engine: #{template_engine}"
     tilt_template = \
@@ -93,7 +93,7 @@ module Vue
   
   
   # Include this module in your controller (or action, or route, or whatever).
-  module Helper
+  module Helpers
   
     def self.included(other)
       other.send :include, Vue::OutputHelpers
@@ -153,7 +153,7 @@ module Vue
       current_engine ||   Vue.template_engine
     end
     
-    # Stores all root apps defined by vue-helper, plus their compiled components.
+    # Stores all root apps defined by vue-helpers, plus their compiled components.
     def vue_roots(root_name = Vue.root_name)
       @vue_roots ||= {}
       @vue_roots[root_name.to_s] ||= RootApp.new
@@ -242,7 +242,7 @@ module Vue
       SecureRandom.urlsafe_base64(32)
     end
 
-  end # Helper
+  end # Helpers
 
   
   # Rack middleware to serve sourced vue block, see https://redpanthers.co/rack-middleware/.
