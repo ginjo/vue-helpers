@@ -63,6 +63,7 @@ module Vue
     #   # => "<foo>"
     #
     def capture_html(*args, &block)
+      #puts "CAPTURE_HTML with CURRENT_ENGINE: #{current_engine}, CURRENT_TEMPLATE_ENGINE: #{current_template_engine}, proper HANDLER: #{find_proper_handler}, ARGS: #{args}"
       if handler = find_proper_handler
         handler.capture_from_template(*args, &block)
       else
@@ -83,6 +84,7 @@ module Vue
     #   concat_content("This will be output to the template buffer")
     #
     def concat_content(text="")
+      #puts "CONCAT_CONTENT with CURRENT_ENGINE: #{current_engine}, CURRENT_TEMPLATE_ENGINE: #{current_template_engine}, proper HANDLER: #{find_proper_handler}, TEXT: #{text[0..24].gsub(/\n/,' ')}"
       if handler = find_proper_handler
         handler.concat_to_template(text, binding)
       else

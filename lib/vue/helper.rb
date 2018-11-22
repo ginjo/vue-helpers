@@ -43,20 +43,21 @@ module Vue
   self.cache_store = {}
   #self.template_proc = Proc.new {|string| erb(string, layout:false)}
   # TODO: I think template_engine is dynamic, or at least passed in arguments.
-  # TODO: Create a method to get current_template_engine, considering 'current_engine' and 'get_proper_template_engine' from Padrino code.
   self.template_engine = :erb
   self.views_path = 'app/views'
   self.callback_prefix = '/vuecallback'
-  self.root_name = "vue-app"
+  self.root_name = 'vue-app'
+  self.yield_wrapper = '<script>#{compiled}</script>'
+  self.script_wrapper = '<script src="#{callback_prefix}/#{key}"></script>'
   
   # TODO: I think this should be a regular method in Helper module.
   self.template_proc = Proc.new do |str_or_sym, locals:{}, template_engine:current_template_engine|
-    #puts "CAlling template_proc with str_or_sym: #{str_or_sym}, and locals: #{locals}"
+    puts "CAlling template_proc with str_or_sym: \"#{str_or_sym.to_s[0..24].gsub(/\n/, ' ')}\", locals: #{locals}, template_engine: #{template_engine}"
     tilt_template = \
       begin
         case str_or_sym
         when Symbol; Tilt.new(File.join(Dir.getwd, Vue.views_path, "#{str_or_sym.to_s}.vue.#{template_engine}"))
-        when String; Tilt.const_get("#{template_engine}Template").new(){str_or_sym}
+        when String; Tilt.template_for(template_engine).new(){str_or_sym}
         end
       rescue
         puts "Template proc: error retrieving template for #{str_or_sym}: #{$!}"
@@ -78,6 +79,8 @@ module Vue
     })
   '
   
+  
+  
   # Instance represents a single vue root and all of its components.
   class RootApp
     attr_accessor :components, :data
@@ -98,11 +101,6 @@ module Vue
 
     # Inserts Vue component-call block in html template.
     # Name & file_name refer to file-name.vue.<template_engine> SFC file. Example: products.vue.erb.
-    # TODO: Implement template_engine here.
-    # TODO: Implement custom wrapper from template file (like I did with the vue root).
-    #   def vue_component_old(name, root_name = Vue.root_name, attributes:{}, tag:nil, file_name:nil, locals:{}, template_engine:nil)
-    #
-    
     def vue_component(name, root_name:Vue.root_name, attributes:{}, tag:nil, file_name:name, locals:{}, template_engine:current_template_engine, &block)
       block_content = rendered_block(locals:locals, template_engine:template_engine, &block) if block_given?
       component_content = rendered_template(file_name:file_name, locals:locals, template_engine:template_engine)
@@ -119,9 +117,11 @@ module Vue
       )
       
       if block_given?
+        puts "VUE_COMPONENT concating content: #{component_output[0..32].gsub(/\n/, ' ')}"
         concat_content(component_output)
         return nil
       else
+        puts "VUE_COMPONENT returning content: #{component_output[0..32].gsub(/\n/, ' ')}"
         return component_output
       end
     end
@@ -131,8 +131,7 @@ module Vue
     def vue_yield(root_name = Vue.root_name)
       #puts "VUE: #{vue}"
       return unless compiled = compile_vue_output(root_name)
-      wrapper = Vue.yield_wrapper || '<script>#{compiled}</script>'
-      interpolated_wrapper = wrapper.interpolate(compile_vue_output: compiled)
+      interpolated_wrapper = Vue.yield_wrapper.interpolate(compile_vue_output: compiled)
     end
 
     # Outputs html script block with src pointing to tmp file on server.
@@ -142,8 +141,7 @@ module Vue
       key = secure_key
       callback_prefix = Vue.callback_prefix
       Vue.cache_store[key] = compiled
-      wrapper = Vue.script_wrapper || '<script src="#{callback_prefix}/#{key}"></script>'
-      interpolated_wrapper = wrapper.interpolate(callback_prefix: callback_prefix, key: key)
+      interpolated_wrapper = Vue.script_wrapper.interpolate(callback_prefix: callback_prefix, key: key)
     end     
     
     
@@ -203,7 +201,7 @@ module Vue
     
     # TODO: Do we need this: 'ERB::Util.html_escape string'. It will convert all html tags like this: "Hi I&#39;m some text. 2 &lt; 3".
     def render_ruby_template(template_text_or_file, locals:{}, template_engine:current_template_engine)
-      puts "RENDER_ruby_template(#{template_text_or_file}, locals:#{locals}, template_engine:#{template_engine})"
+      puts "RENDER_ruby_template(\"#{template_text_or_file.to_s[0..24].gsub(/\n/, ' ')}\", locals:#{locals}, template_engine:#{template_engine})"
       instance_exec(template_text_or_file, locals:locals, template_engine:template_engine, &Vue.template_proc)
     end
 
