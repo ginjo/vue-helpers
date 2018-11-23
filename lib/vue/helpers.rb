@@ -3,7 +3,7 @@ require 'securerandom'
 require 'erb'
 require 'tilt'
 
-require 'vue/output_helpers'
+#require 'vue/output_helpers'
 
 module StringRefinements
   refine String do
@@ -49,23 +49,6 @@ module Vue
   self.yield_wrapper = '<script>#{compiled}</script>'
   self.script_wrapper = '<script src="#{callback_prefix}/#{key}"></script>'
   
-  # TODO: I think this should be a regular method in Helpers module.
-  #   self.template_proc = Proc.new do |str_or_sym, locals:{}, template_engine:current_template_engine|
-  #     puts "CAlling template_proc with str_or_sym: \"#{str_or_sym.to_s[0..24].gsub(/\n/, ' ')}\", locals: #{locals}, template_engine: #{template_engine}"
-  #     tilt_template = \
-  #       begin
-  #         case str_or_sym
-  #         when Symbol; Tilt.new(template_path(str_or_sym, template_engine:template_engine))
-  #         when String; Tilt.template_for(template_engine).new(){str_or_sym}
-  #         end
-  #       rescue
-  #         puts "Template proc: error retrieving template for #{str_or_sym}: #{$!}"
-  #         nil
-  #       end
-  #     #puts "Template proc: context-binding self: #{context.eval('self').inspect}"
-  #     tilt_template.render(self, **locals) if tilt_template.is_a?(Tilt::Template)
-  #   end
-  
   self.component_wrapper = '
     <#{el_name} #{attributes_string}>
       #{block_content}
@@ -95,19 +78,24 @@ module Vue
   # Include this module in your controller (or action, or route, or whatever).
   module Helpers
   
-    def self.included(other)
-      other.send :include, Vue::OutputHelpers
-    end
+    #     def self.included(other)
+    #       other.send :include, Vue::OutputHelpers
+    #     end
 
     # Inserts Vue component-call block in html template.
     # Name & file_name refer to file-name.vue.<template_engine> SFC file. Example: products.vue.erb.
     def vue_component(name, root_name:Vue.root_name, attributes:{}, tag:nil, file_name:name, locals:{}, template_engine:current_template_engine, &block)
       puts "VUE_COMPONENT called with name: #{name}, root_name: #{root_name}, tag: #{tag}, file_name: #{file_name}, template_engine: #{template_engine}, block_given? #{block_given?}"
 
-      component_content = rendered_template(file_name:file_name, locals:locals, template_engine:template_engine)
-      block_content = rendered_block(locals:locals, template_engine:template_engine, &block) if block_given?
+      component_content_ary = rendered_template(file_name:file_name, locals:locals, template_engine:template_engine)
+      puts "VC #{name} component_content_ary: #{component_content_ary}"
       
-      compiled_component_js = compile_component_js(name, *component_content)
+      block_content = rendered_block(locals:locals, template_engine:template_engine, &block) if block_given?
+      puts "VC #{name} block_content: #{block_content}"
+      
+      compiled_component_js = compile_component_js(name, *component_content_ary)
+      puts "VC #{name} compiled_component_js: #{compiled_component_js}"
+      
       vue_roots(root_name).components[name] = compiled_component_js
       
       component_output = compile_component_html_block(
@@ -117,13 +105,14 @@ module Vue
         block_content: block_content,
         locals:locals
       )
+       puts "VC component_output for '#{name}': #{component_output}"    
       
       if block_given?
-        puts "Vue_component concating content: #{component_output[0..32].gsub(/\n/, ' ')}"
+        puts "Vue_component concating content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"
         concat_content(component_output)
         return nil
       else
-        puts "Vue_component returning content: #{component_output[0..32].gsub(/\n/, ' ')}"
+        puts "Vue_component returning content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"
         return component_output
       end
     end
@@ -152,12 +141,13 @@ module Vue
     
     # TODO: Patch this in with the Padrino code.
     def current_template_engine
-      current_engine || Vue.template_engine
+      #current_engine || Vue.template_engine
+      Tilt.default_mapping.template_map.invert[Tilt.current_template] || Vue.template_engine
     end
     
     def template_path(name, template_engine:current_template_engine)
       tp = File.join(Dir.getwd, Vue.views_path, "#{name.to_s}.vue.#{template_engine}")
-      puts "Template_path generated: #{tp}"
+      puts "Template_path generated for '#{name}': #{tp}"
       tp
     end
     
@@ -173,11 +163,14 @@ module Vue
     end
     
     def rendered_template(file_name:nil, locals:{}, template_engine:current_template_engine)
-      #parsed_and_rendered_vue_sfc = parse_vue_sfc(file_name.to_sym, locals:locals, template_engine:template_engine)
-      template, script = parse_vue_sfc(file_name.to_sym)
-      r_template = render_ruby_template(template, locals:locals, template_engine:template_engine)
-      r_script   = render_ruby_template(script, locals:locals, template_engine:template_engine)
-      [r_template, r_script]
+      # template, script = parse_vue_sfc(file_name.to_sym)
+      # r_template = render_ruby_template(template, locals:locals, template_engine:template_engine)
+      # r_script   = render_ruby_template(script, locals:locals, template_engine:template_engine)
+      # [r_template, r_script]
+      
+      rendered_vue_file = render_ruby_template(file_name.to_sym, locals:locals, template_engine:template_engine)
+      puts "RENDERED_vue_file for '#{file_name}': #{rendered_vue_file}"
+      parse_vue_sfc(rendered_vue_file.to_s)
     end
     
     def compile_component_html_block(name:nil, tag:nil, attributes:{}, block_content:'', locals:{})
@@ -202,15 +195,6 @@ module Vue
       ).to_s
     end
 
-#     def parse_vue_sfc(template_file, locals:{}, template_engine:current_template_engine)
-#       raw = render_ruby_template(template_file, locals:locals, template_engine:template_engine)
-#       name = template_file.to_s.split(/[. ]/)[0]
-#       a,template,c,script = raw.to_s.match(/(<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
-#       #puts "PARSE_vue_sfc result: #{[template,script].to_yaml}"
-#       #[name, template, script]
-#       {name:name, vue_template:template, vue_script:script}
-#     end
-    
     def parse_vue_sfc(template_text_or_file)
       raw_template = begin
         case template_text_or_file
@@ -277,6 +261,23 @@ module Vue
         
     def secure_key
       SecureRandom.urlsafe_base64(32)
+    end
+    
+    
+    # Capture & Concat
+    # See https://gist.github.com/seanami/496702
+    
+    def buffer(name=:_out_buf)
+      #@_out_buf
+      instance_variable_get("@#{name}")
+    end
+    def capture_html(*args, &block)
+      pos = buffer.size
+      yield(*args)
+      buffer.slice!(pos..buffer.size)
+    end
+    def concat_content(text='')
+      buffer << text
     end
 
   end # Helpers
