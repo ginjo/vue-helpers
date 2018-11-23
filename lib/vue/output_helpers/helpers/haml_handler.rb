@@ -6,7 +6,8 @@ module Vue
     # Modified by Ginjo.
     #puts "OUTPUTHELPERS Tilt.template_for '.haml': #{Tilt.template_for('.haml')}"
     # This needs to be here, or Hamlit will be chosen (even if Hamlit is not loaded).
-    Tilt.template_for :haml
+    #Tilt.template_for :haml
+    # Actually, I think it should work as long as 'haml' is loaded before this library.
     if defined?(Haml) && Tilt.template_for('.haml').to_s == "Tilt::HamlTemplate"
       #puts "OUTPUTHELPERS selected HamlHandler"
       ##

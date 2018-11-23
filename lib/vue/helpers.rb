@@ -63,7 +63,8 @@ module Vue
         puts "Template proc: error retrieving template for #{str_or_sym}: #{$!}"
         nil
       end
-    tilt_template.render(binding, **locals) if tilt_template.is_a?(Tilt::Template)
+    #puts "Template proc: context-binding self: #{context.eval('self').inspect}"
+    tilt_template.render(self, **locals) if tilt_template.is_a?(Tilt::Template)
   end
   
   self.component_wrapper = '
