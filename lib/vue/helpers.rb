@@ -78,9 +78,12 @@ module Vue
   # Include this module in your controller (or action, or route, or whatever).
   module Helpers
   
-    #     def self.included(other)
-    #       other.send :include, Vue::OutputHelpers
-    #     end
+    # def self.included(other)
+    #   #other.send :include, Vue::OutputHelpers
+    #   if defined?(Haml::Helpers)
+    #     other.send :include, Haml::Helpers
+    #   end
+    # end
 
     # Inserts Vue component-call block in html template.
     # Name & file_name refer to file-name.vue.<template_engine> SFC file. Example: products.vue.erb.
@@ -88,13 +91,13 @@ module Vue
       puts "VUE_COMPONENT called with name: #{name}, root_name: #{root_name}, tag: #{tag}, file_name: #{file_name}, template_engine: #{template_engine}, block_given? #{block_given?}"
 
       component_content_ary = rendered_template(file_name:file_name, locals:locals, template_engine:template_engine)
-      puts "VC #{name} component_content_ary: #{component_content_ary}"
+      #puts "VC #{name} component_content_ary: #{component_content_ary}"
       
       block_content = rendered_block(locals:locals, template_engine:template_engine, &block) if block_given?
       puts "VC #{name} block_content: #{block_content}"
       
       compiled_component_js = compile_component_js(name, *component_content_ary)
-      puts "VC #{name} compiled_component_js: #{compiled_component_js}"
+      #puts "VC #{name} compiled_component_js: #{compiled_component_js}"
       
       vue_roots(root_name).components[name] = compiled_component_js
       
@@ -108,11 +111,11 @@ module Vue
        puts "VC component_output for '#{name}': #{component_output}"    
       
       if block_given?
-        puts "Vue_component concating content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"
+        #puts "Vue_component concating content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"
         concat_content(component_output)
-        return nil
+        #return nil
       else
-        puts "Vue_component returning content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"
+        #puts "Vue_component returning content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"
         return component_output
       end
     end
@@ -139,18 +142,6 @@ module Vue
     ### TODO: probably should be private.
     ### TODO: Should these be refinements, since they may interfere with other app or controller methods?
     
-    # TODO: Patch this in with the Padrino code.
-    def current_template_engine
-      #current_engine || Vue.template_engine
-      Tilt.default_mapping.template_map.invert[Tilt.current_template] || Vue.template_engine
-    end
-    
-    def template_path(name, template_engine:current_template_engine)
-      tp = File.join(Dir.getwd, Vue.views_path, "#{name.to_s}.vue.#{template_engine}")
-      puts "Template_path generated for '#{name}': #{tp}"
-      tp
-    end
-    
     # Stores all root apps defined by vue-helpers, plus their compiled components.
     def vue_roots(root_name = Vue.root_name)
       @vue_roots ||= {}
@@ -159,6 +150,7 @@ module Vue
     
     def rendered_block(locals:{}, template_engine:current_template_engine, &block)
       block_content = capture_html(&block) if block_given?
+      puts "RENDERED_BLOCK captured block: #{block_content}"
       rendered_block_content = render_ruby_template(block_content.to_s, template_engine:template_engine, locals:locals)
     end
     
@@ -169,7 +161,7 @@ module Vue
       # [r_template, r_script]
       
       rendered_vue_file = render_ruby_template(file_name.to_sym, locals:locals, template_engine:template_engine)
-      puts "RENDERED_vue_file for '#{file_name}': #{rendered_vue_file}"
+      #puts "RENDERED_vue_file for '#{file_name}': #{rendered_vue_file}"
       parse_vue_sfc(rendered_vue_file.to_s)
     end
     
@@ -205,7 +197,7 @@ module Vue
         puts "Parse_vue_sfc error getting template file: #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
         nil
       end
-      a,template,c,script = raw_template.to_s.match(/(<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
+      a,template,c,script = raw_template.to_s.match(/(.*<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
       #{vue_template:template, vue_script:script}
       [template, script]
     end
@@ -263,21 +255,56 @@ module Vue
       SecureRandom.urlsafe_base64(32)
     end
     
+    def current_template_engine
+      #current_engine || Vue.template_engine
+      Tilt.default_mapping.template_map.invert[Tilt.current_template.class] || Vue.template_engine
+    end
+    
+    def template_path(name, template_engine:current_template_engine)
+      tp = File.join(Dir.getwd, Vue.views_path, "#{name.to_s}.vue.#{template_engine}")
+      #puts "Template_path generated for '#{name}': #{tp}"
+      tp
+    end
     
     # Capture & Concat
     # See https://gist.github.com/seanami/496702
+    # TODO: This needs to handle haml & slim as well.
     
-    def buffer(name=:_out_buf)
+    def buffer(name = :_out_buf)
       #@_out_buf
       instance_variable_get("@#{name}")
     end
+    
     def capture_html(*args, &block)
-      pos = buffer.size
-      yield(*args)
-      buffer.slice!(pos..buffer.size)
+      return unless block_given?
+      #puts "CAPTURE_HTML current_template_engine: #{current_template_engine}"
+      case current_template_engine.to_s
+      when /erb/
+        puts "Capture_html is erb"
+        pos = buffer.size
+        #yield(*args)
+        r = block.call(*args)
+        puts "Capture_html block.call result: #{r}"
+        buffer.slice!(pos..buffer.size)
+      when /haml/
+        puts "Capture_html is haml"
+        capture_haml(*args, &block)
+      else
+        puts "Capture_html defaulting to generic 'yield'"
+        yield(*args)
+      end
     end
+    
     def concat_content(text='')
-      buffer << text
+      #puts "CONCAT_CONTENT current_template_engine: #{current_template_engine}"
+      case current_template_engine.to_s
+      when /erb/ 
+        buffer << text
+      when /haml/
+        haml_concat(text)
+      else
+        text
+      end
     end
 
   end # Helpers
