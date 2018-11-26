@@ -36,6 +36,7 @@ module Vue
       callback_prefix
       template_engine
       views_path
+      buffer_name
     )
   end
   
@@ -48,6 +49,7 @@ module Vue
   self.root_name = 'vue-app'
   self.yield_wrapper = '<script>#{compiled}</script>'
   self.script_wrapper = '<script src="#{callback_prefix}/#{key}"></script>'
+  self.buffer_name = :@_vue_outvar
   
   self.component_wrapper = '
     <#{el_name} #{attributes_string}>
@@ -89,12 +91,15 @@ module Vue
     # Name & file_name refer to file-name.vue.<template_engine> SFC file. Example: products.vue.erb.
     def vue_component(name, root_name:Vue.root_name, attributes:{}, tag:nil, file_name:name, locals:{}, template_engine:current_template_engine, &block)
       puts "VUE_COMPONENT called with name: #{name}, root_name: #{root_name}, tag: #{tag}, file_name: #{file_name}, template_engine: #{template_engine}, block_given? #{block_given?}"
-
-      component_content_ary = rendered_template(file_name:file_name, locals:locals, template_engine:template_engine)
+      #puts instance_variables
+      #puts "@outvar: #{@outvar}: #{eval('@' + @outvar) if @outvar}"
+      #puts "@_out_buf: #{@_out_buf}"
+      
+      component_content_ary = rendered_sfc_file(file_name:file_name, locals:locals, template_engine:template_engine)
       #puts "VC #{name} component_content_ary: #{component_content_ary}"
       
       block_content = rendered_block(locals:locals, template_engine:template_engine, &block) if block_given?
-      puts "VC #{name} block_content: #{block_content}"
+      #puts "VC #{name} block_content: #{block_content}"
       
       compiled_component_js = compile_component_js(name, *component_content_ary)
       #puts "VC #{name} compiled_component_js: #{compiled_component_js}"
@@ -108,7 +113,7 @@ module Vue
         block_content: block_content,
         locals:locals
       )
-       puts "VC component_output for '#{name}': #{component_output}"    
+       #puts "VC output for '#{name}': #{component_output}"
       
       if block_given?
         #puts "Vue_component concating content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"
@@ -118,6 +123,10 @@ module Vue
         #puts "Vue_component returning content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"
         return component_output
       end
+      
+             
+      #puts "@outvar: #{@outvar}: #{eval('@' + @outvar) if @outvar}"
+      puts "@_out_buf: #{@_out_buf}" 
     end
   
     # Ouputs html script block of entire collection of vue roots and components.
@@ -149,12 +158,13 @@ module Vue
     end
     
     def rendered_block(locals:{}, template_engine:current_template_engine, &block)
-      block_content = capture_html(&block) if block_given?
-      puts "RENDERED_BLOCK captured block: #{block_content}"
-      rendered_block_content = render_ruby_template(block_content.to_s, template_engine:template_engine, locals:locals)
+      block_content = capture_html(*locals, &block) if block_given?
+      #puts "RENDERED_BLOCK captured block: #{block_content}"
+      block_content
+      #rendered_block_content = render_ruby_template(block_content.to_s, template_engine:template_engine, locals:locals)
     end
     
-    def rendered_template(file_name:nil, locals:{}, template_engine:current_template_engine)
+    def rendered_sfc_file(file_name:nil, locals:{}, template_engine:current_template_engine)
       # template, script = parse_vue_sfc(file_name.to_sym)
       # r_template = render_ruby_template(template, locals:locals, template_engine:template_engine)
       # r_script   = render_ruby_template(script, locals:locals, template_engine:template_engine)
@@ -208,14 +218,21 @@ module Vue
         
       tilt_template = begin
         case template_text_or_file
-        when Symbol; Tilt.new(template_path(template_text_or_file, template_engine:template_engine))
-        when String; Tilt.template_for(template_engine).new(){template_text_or_file}
+        when Symbol; Tilt.new(template_path(template_text_or_file, template_engine:template_engine), 1, outvar: Vue.buffer_name)
+        when String; Tilt.template_for(template_engine).new(nil, 1, outvar: Vue.buffer_name){template_text_or_file}
         end
       rescue
         puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
         nil
       end
-      tilt_template.render(self, **locals) if tilt_template.is_a?(Tilt::Template)
+      
+      # # TODO: Review this. Does it do what we think and want?
+      # tilt_outvar = tilt_template.instance_variable_get :@outvar
+      # tilt_outvar_data = instance_variable_get "@#{tilt_outvar}" if tilt_outvar
+      # puts "render_ruby_template tilt_template @outvar: #{tilt_outvar}: #{tilt_outvar_data}"
+      
+      #tilt_template.render(self, **locals) if tilt_template.is_a?(Tilt::Template)
+      tilt_template.render(self) if tilt_template.is_a?(Tilt::Template)
     end
 
     #def compile_component_js(name, template, script)
@@ -244,11 +261,12 @@ module Vue
       }
       
       # {block_content:block_content, vue_sfc:{name:name, vue_template:template, vue_script:script}}
-      rendered_template_script = \
-        rendered_template(file_name:file_name.to_sym, locals:locals, template_engine:template_engine).to_a[1] ||
+      rendered_sfc_script = \
+        rendered_sfc_file(file_name:file_name.to_sym, locals:locals, template_engine:template_engine).to_a[1] ||
         Vue.root_wrapper.interpolate(**locals)
       
-      vue_output << rendered_template_script
+      vue_output << rendered_sfc_script
+      vue_output << "; App = VueApp;"
     end  # compile_vue_output
         
     def secure_key
@@ -270,36 +288,37 @@ module Vue
     # See https://gist.github.com/seanami/496702
     # TODO: This needs to handle haml & slim as well.
     
-    def buffer(name = :_out_buf)
+    def buffer(buffer_name = nil)
       #@_out_buf
-      instance_variable_get("@#{name}")
+      buffer_name ||= Tilt.current_template.instance_variable_get('@outvar') || :@_out_buf
+      instance_variable_get(buffer_name) ||
+      instance_variable_set(buffer_name, '')
     end
     
-    def capture_html(*args, &block)
+    def capture_html(*args, buffer_name:nil, &block)
       return unless block_given?
-      #puts "CAPTURE_HTML current_template_engine: #{current_template_engine}"
+      #puts "CAPTURE_HTML current_template_engine: #{current_template_engine}, buffer_name: #{Tilt.current_template.instance_variable_get('@outvar')}."
       case current_template_engine.to_s
       when /erb/
-        puts "Capture_html is erb"
-        pos = buffer.size
-        #yield(*args)
-        r = block.call(*args)
-        puts "Capture_html block.call result: #{r}"
-        buffer.slice!(pos..buffer.size)
+        #puts "Capturing ERB block."
+        pos = buffer(buffer_name).size
+        yield(*args)
+        #puts "Capture_html block.call result: #{r}"
+        buffer(buffer_name).slice!(pos..buffer(buffer_name).size)
       when /haml/
-        puts "Capture_html is haml"
+        #puts "Capturing HAML block."
         capture_haml(*args, &block)
       else
-        puts "Capture_html defaulting to generic 'yield'"
+        #puts "Capturing generic template block."
         yield(*args)
       end
     end
     
-    def concat_content(text='')
-      #puts "CONCAT_CONTENT current_template_engine: #{current_template_engine}"
+    def concat_content(text='', buffer_name:nil)
+      #puts "CONCAT_CONTENT current_template_engine: #{current_template_engine}, buffer_name: #{buffer_name}."
       case current_template_engine.to_s
       when /erb/ 
-        buffer << text
+        buffer(buffer_name) << text
       when /haml/
         haml_concat(text)
       else
