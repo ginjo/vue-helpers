@@ -124,9 +124,8 @@ module Vue
         return component_output
       end
       
-             
       #puts "@outvar: #{@outvar}: #{eval('@' + @outvar) if @outvar}"
-      puts "@_out_buf: #{@_out_buf}" 
+      #puts "@_out_buf: #{@_out_buf}" 
     end
   
     # Ouputs html script block of entire collection of vue roots and components.
@@ -330,6 +329,8 @@ module Vue
 
   
   # Rack middleware to serve sourced vue block, see https://redpanthers.co/rack-middleware/.
+  # Usage: use Vue::Source
+  
   class Source
     def initialize(app)
       @app = app
