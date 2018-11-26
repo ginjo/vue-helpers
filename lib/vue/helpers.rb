@@ -230,8 +230,7 @@ module Vue
       # tilt_outvar_data = instance_variable_get "@#{tilt_outvar}" if tilt_outvar
       # puts "render_ruby_template tilt_template @outvar: #{tilt_outvar}: #{tilt_outvar_data}"
       
-      #tilt_template.render(self, **locals) if tilt_template.is_a?(Tilt::Template)
-      tilt_template.render(self) if tilt_template.is_a?(Tilt::Template)
+      tilt_template.render(self, **locals) if tilt_template.is_a?(Tilt::Template)
     end
 
     #def compile_component_js(name, template, script)
