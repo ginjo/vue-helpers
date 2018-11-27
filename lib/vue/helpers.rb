@@ -1,11 +1,10 @@
 require "vue/helpers/version"
 require 'securerandom'
-require 'erb'
 require 'tilt'
+require 'erb'
 
-#require 'vue/output_helpers'
 
-module StringRefinements
+module Refinements
   refine String do
     def interpolate(**locals)
       gsub(/\#\{/, '%{') % locals
@@ -17,8 +16,26 @@ module StringRefinements
   end
 end
 
+module ModErb
+  def initialize(*args)
+    #puts "ERB.new(*args): #{args.to_yaml}"
+    args[3] ||= Vue.default_buffer_name
+    super
+  end
+end
+ERB.send(:prepend, ModErb)
+
+module ControllerPrepend
+  def initialize(*args)
+    super
+    unless defined?(@outvar)
+      @outvar ||= Vue.default_buffer_name
+    end
+  end
+end
+
 module Vue
-  using StringRefinements
+  using Refinements
   
   class << self
     # Class defaults.
@@ -36,7 +53,8 @@ module Vue
       callback_prefix
       template_engine
       views_path
-      buffer_name
+      vue_buffer_name
+      default_buffer_name
     )
   end
   
@@ -49,7 +67,8 @@ module Vue
   self.root_name = 'vue-app'
   self.yield_wrapper = '<script>#{compiled}</script>'
   self.script_wrapper = '<script src="#{callback_prefix}/#{key}"></script>'
-  self.buffer_name = :@_vue_outvar
+  self.vue_buffer_name = '@_vue_outvar'
+  self.default_buffer_name = '@_erbout'
   
   self.component_wrapper = '
     <#{el_name} #{attributes_string}>
@@ -80,20 +99,17 @@ module Vue
   # Include this module in your controller (or action, or route, or whatever).
   module Helpers
   
-    # def self.included(other)
-    #   #other.send :include, Vue::OutputHelpers
-    #   if defined?(Haml::Helpers)
-    #     other.send :include, Haml::Helpers
-    #   end
-    # end
+    def self.included(other)
+      other.send(:prepend, ControllerPrepend)
+    end
 
     # Inserts Vue component-call block in html template.
     # Name & file_name refer to file-name.vue.<template_engine> SFC file. Example: products.vue.erb.
     def vue_component(name, root_name:Vue.root_name, attributes:{}, tag:nil, file_name:name, locals:{}, template_engine:current_template_engine, &block)
-      puts "VUE_COMPONENT called with name: #{name}, root_name: #{root_name}, tag: #{tag}, file_name: #{file_name}, template_engine: #{template_engine}, block_given? #{block_given?}"
-      #puts instance_variables
-      #puts "@outvar: #{@outvar}: #{eval('@' + @outvar) if @outvar}"
-      #puts "@_out_buf: #{@_out_buf}"
+      #puts "VUE_COMPONENT called with name: #{name}, root_name: #{root_name}, tag: #{tag}, file_name: #{file_name}, template_engine: #{template_engine}, block_given? #{block_given?}"
+      #puts self.class
+      #[instance_variables, local_variables].flatten.each{|v| puts "#{v}: #{eval(v.to_s)}"}; nil
+      #puts "block.binding.eval(#{@outvar}) : #{block.binding.eval(@outvar.to_s)}"
       
       component_content_ary = rendered_sfc_file(file_name:file_name, locals:locals, template_engine:template_engine)
       #puts "VC #{name} component_content_ary: #{component_content_ary}"
@@ -217,8 +233,8 @@ module Vue
         
       tilt_template = begin
         case template_text_or_file
-        when Symbol; Tilt.new(template_path(template_text_or_file, template_engine:template_engine), 1, outvar: Vue.buffer_name)
-        when String; Tilt.template_for(template_engine).new(nil, 1, outvar: Vue.buffer_name){template_text_or_file}
+        when Symbol; Tilt.new(template_path(template_text_or_file, template_engine:template_engine), 1, outvar: Vue.vue_buffer_name)
+        when String; Tilt.template_for(template_engine).new(nil, 1, outvar: Vue.vue_buffer_name){template_text_or_file}
         end
       rescue
         puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
@@ -288,14 +304,15 @@ module Vue
     
     def buffer(buffer_name = nil)
       #@_out_buf
-      buffer_name ||= Tilt.current_template.instance_variable_get('@outvar') || :@_out_buf
+      buffer_name ||= Tilt.current_template.instance_variable_get('@outvar') || @outvar || Vue.default_buffer_name
+      #puts "BUFFER chosen: #{buffer_name}, ivars: #{instance_variables}"
       instance_variable_get(buffer_name) ||
       instance_variable_set(buffer_name, '')
     end
     
     def capture_html(*args, buffer_name:nil, &block)
       return unless block_given?
-      #puts "CAPTURE_HTML current_template_engine: #{current_template_engine}, buffer_name: #{Tilt.current_template.instance_variable_get('@outvar')}."
+      #puts "CAPTURE_HTML current_template_engine: #{current_template_engine}."
       case current_template_engine.to_s
       when /erb/
         #puts "Capturing ERB block."
@@ -313,7 +330,7 @@ module Vue
     end
     
     def concat_content(text='', buffer_name:nil)
-      #puts "CONCAT_CONTENT current_template_engine: #{current_template_engine}, buffer_name: #{buffer_name}."
+      #puts "CONCAT_CONTENT current_template_engine: #{current_template_engine}."
       case current_template_engine.to_s
       when /erb/ 
         buffer(buffer_name) << text
