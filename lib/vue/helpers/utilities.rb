@@ -16,7 +16,7 @@ module Vue
     module ModErb
       def initialize(*args)
         #puts "ERB.new(*args): #{args.to_yaml}"
-        args[3] ||= Vue::Helpers.default_buffer_name
+        args[3] ||= Vue::Helpers.default_outvar
         super
       end
     end
@@ -26,7 +26,7 @@ module Vue
       def initialize(*args)
         super
         unless defined?(@outvar)
-          @outvar ||= Vue::Helpers.default_buffer_name
+          @outvar ||= Vue::Helpers.default_outvar
         end
       end
     end

@@ -10,52 +10,38 @@ module Vue
     using Refinements
     
     class << self
-      # Class defaults.
-      # TODO: Copy these, as hash, to helper instance,
-      # then allow helper to change them if necessary (through vue_component or yield_vue or source_vue methods).
-      # Not yet, that's a deeper level of customization. Maybe next version. Remember that the helper instance only lasts for one request cycle.
+      # Vue::Helpers defaults.
       attr_accessor *%w(
         cache_store
-        component_wrapper
-        yield_wrapper
-        script_wrapper
-        root_wrapper
-        root_el
-        root_name
         callback_prefix
+        component_wrapper_html
+        default_outvar
+        external_js_wrapper_html
+        inline_js_wrapper_html
+        root_app_wrapper_html
+        root_name
+        root_object_js
         template_engine
         views_path
-        vue_buffer_name
-        default_buffer_name
+        vue_outvar
       )
     end
     
     self.cache_store = {}
-    #self.template_proc = Proc.new {|string| erb(string, layout:false)}
-    # TODO: I think template_engine is dynamic, or at least passed in arguments.
+    self.callback_prefix = '/vuecallback'
+    self.component_wrapper_html = '<#{el_name} #{attributes_string}>#{block_content}</#{el_name}>'
+    self.default_outvar = '@_erbout'
+    self.external_js_wrapper_html = '<script src="#{callback_prefix}/#{key}"></script>'
+    self.inline_js_wrapper_html = '<script>#{compiled}</script>'
+    self.root_app_wrapper_html = '<div id="#{root_name}">#{block_result}</div>#{root_script_output}'
+    self.root_name = 'vue-app'
+    self.root_object_js = 'var #{app_name} = new Vue({el: ("##{root_name}"), data: #{vue_data_json}})'
     self.template_engine = :erb
     self.views_path = 'app/views'
-    self.callback_prefix = '/vuecallback'
-    self.root_name = 'vue-app'
-    self.yield_wrapper = '<script>#{compiled}</script>'
-    self.script_wrapper = '<script src="#{callback_prefix}/#{key}"></script>'
-    self.vue_buffer_name = '@_vue_outvar'
-    self.default_buffer_name = '@_erbout'
+    self.vue_outvar = '@_vue_outvar'
     
-    self.component_wrapper = '
-      <#{el_name} #{attributes_string}>
-        #{block_content}
-      </#{el_name}>
-    '
-    
-    self.root_wrapper = '
-      var #{app_name} = new Vue({
-        el: (Vue.root_el || "##{root_name}"),
-        data: #{vue_data_json}
-      })
-    '
   
-    # Include this module in your controller (or action, or route, or whatever).
+    # Include this module in your controller (or action, or routes, or whatever).
     module Methods
     
       def self.included(other)
@@ -64,7 +50,14 @@ module Vue
   
       # Inserts Vue component-call block in html template.
       # Name & file_name refer to file-name.vue.<template_engine> SFC file. Example: products.vue.erb.
-      def vue_component(name, root_name:Vue::Helpers.root_name, attributes:{}, tag:nil, file_name:name, locals:{}, template_engine:current_template_engine, &block)
+      def vue_component(name,
+          root_name:Vue::Helpers.root_name,
+          attributes:{}, tag:nil,
+          file_name:name,
+          locals:{},
+          template_engine:current_template_engine,
+          &block
+        )
         #puts "VUE_COMPONENT called with name: #{name}, root_name: #{root_name}, tag: #{tag}, file_name: #{file_name}, template_engine: #{template_engine}, block_given? #{block_given?}"
         #puts self.class
         #[instance_variables, local_variables].flatten.each{|v| puts "#{v}: #{eval(v.to_s)}"}; nil
@@ -100,39 +93,42 @@ module Vue
         end
         
         #puts "@outvar: #{@outvar}: #{eval('@' + @outvar) if @outvar}"
-        #puts "@_out_buf: #{@_out_buf}" 
+        #puts "@_out_buf: #{@_out_buf}"
+        # result
       end
     
       # Ouputs html script block of entire collection of vue roots and components.
-      # Convert this to use ERB for wrapper.
-      def vue_yield(root_name = Vue::Helpers.root_name)
+      def vue_root_inline(root_name = Vue::Helpers.root_name)
         #puts "VUE: #{vue}"
         return unless compiled = compile_vue_output(root_name)
-        interpolated_wrapper = Vue::Helpers.yield_wrapper.interpolate(compiled: compiled)
+        interpolated_wrapper = Vue::Helpers.inline_js_wrapper_html.interpolate(compiled: compiled)
       end
   
       # Outputs html script block with src pointing to tmp file on server.
-      # Convert this to use ERB for wrapper.
-      def vue_src(root_name = Vue::Helpers.root_name)
+      def vue_root_external(root_name = Vue::Helpers.root_name)
         return unless compiled = compile_vue_output(root_name)
         key = secure_key
         callback_prefix = Vue::Helpers.callback_prefix
         Vue::Helpers.cache_store[key] = compiled
-        interpolated_wrapper = Vue::Helpers.script_wrapper.interpolate(callback_prefix: callback_prefix, key: key)
+        interpolated_wrapper = Vue::Helpers.external_js_wrapper_html.interpolate(callback_prefix: callback_prefix, key: key)
       end
       
       def vue_root(root_name = Vue::Helpers.root_name, render_to_resource:false, **options, &block)
         block_result = capture_html(&block) if block_given?
         
         root_script_output = case render_to_resource
-        when true; vue_src(root_name)
-        when String; vue_src(root_name)
-        else vue_yield(root_name)
+        when true; vue_root_external(root_name)
+        when String; vue_root_external(root_name)
+        else vue_root_inline(root_name)
         end
         
         if block_result
-          #puts "DEBUG: vue_root block_result: #{block_result.to_s}"
-          concat_content("<div id=\"#{root_name}\">\n#{block_result}\n</div>\n#{root_script_output}")
+          concat_content(Vue::Helpers.root_app_wrapper_html.interpolate(
+            # locals
+            root_name:root_name,
+            block_result:block_result,
+            root_script_output:root_script_output
+          ))
         else
           root_output
         end
@@ -140,7 +136,7 @@ module Vue
       
 
       
-      ### TODO: probably should be private.
+      private
       ### TODO: Should these be refinements, since they may interfere with other app or controller methods?
       
       # Stores all root apps defined by vue-helpers, plus their compiled components.
@@ -179,7 +175,7 @@ module Vue
         # Compiles attributes string from given ruby hash.
         attributes_string = attributes.inject(''){|o, kv| o.to_s << "#{kv[0]}=\"#{kv[1]}\" "}      
         
-        rendered_component_block_template = Vue::Helpers.component_wrapper.interpolate(**
+        rendered_component_block_template = Vue::Helpers.component_wrapper_html.interpolate(**
           {
             name:name,
             tag:tag,
@@ -212,8 +208,8 @@ module Vue
           
         tilt_template = begin
           case template_text_or_file
-          when Symbol; Tilt.new(template_path(template_text_or_file, template_engine:template_engine), 1, outvar: Vue::Helpers.vue_buffer_name)
-          when String; Tilt.template_for(template_engine).new(nil, 1, outvar: Vue::Helpers.vue_buffer_name){template_text_or_file}
+          when Symbol; Tilt.new(template_path(template_text_or_file, template_engine:template_engine), 1, outvar: Vue::Helpers.vue_outvar)
+          when String; Tilt.template_for(template_engine).new(nil, 1, outvar: Vue::Helpers.vue_outvar){template_text_or_file}
           end
         rescue
           # TODO: Make this a logger.debug output.
@@ -237,7 +233,13 @@ module Vue
         end
       end
   
-      def compile_vue_output(root_name = Vue::Helpers.root_name, file_name:root_name, app_name:root_name.camelize, template_engine:current_template_engine, &block) 
+      def compile_vue_output(root_name = Vue::Helpers.root_name,
+          file_name:root_name,
+          app_name:root_name.camelize,
+          template_engine:current_template_engine,
+          &block
+        )
+        
         vue_output = ""
         
         components = vue_roots(root_name).components
@@ -259,7 +261,7 @@ module Vue
         # {block_content:block_content, vue_sfc:{name:name, vue_template:template, vue_script:script}}
         rendered_sfc_script = \
           rendered_sfc_file(file_name:file_name.to_sym, locals:locals, template_engine:template_engine).to_a[1] ||
-          Vue::Helpers.root_wrapper.interpolate(**locals)
+          Vue::Helpers.root_object_js.interpolate(**locals)
         
         vue_output << rendered_sfc_script
         vue_output << "; App = VueApp;"
@@ -286,7 +288,7 @@ module Vue
       
       def buffer(buffer_name = nil)
         #@_out_buf
-        buffer_name ||= Tilt.current_template.instance_variable_get('@outvar') || @outvar || Vue::Helpers.default_buffer_name
+        buffer_name ||= Tilt.current_template.instance_variable_get('@outvar') || @outvar || Vue::Helpers.default_outvar
         #puts "BUFFER chosen: #{buffer_name}, ivars: #{instance_variables}"
         instance_variable_get(buffer_name) ||
         instance_variable_set(buffer_name, '')
