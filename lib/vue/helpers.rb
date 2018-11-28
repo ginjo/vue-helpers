@@ -219,7 +219,8 @@ module Vue
         when String; template_text_or_file
         end
       rescue
-        puts "Parse_vue_sfc error getting template file: #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
+        # TODO: Make this a logger.debug output.
+        #puts "Parse_vue_sfc error getting template file: #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
         nil
       end
       a,template,c,script = raw_template.to_s.match(/(.*<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
@@ -237,7 +238,8 @@ module Vue
         when String; Tilt.template_for(template_engine).new(nil, 1, outvar: Vue.vue_buffer_name){template_text_or_file}
         end
       rescue
-        puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
+        # TODO: Make this a logger.debug output.
+        #puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
         nil
       end
       
