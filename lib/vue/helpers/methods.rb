@@ -119,8 +119,19 @@ module Vue
         callback_prefix = Vue::Helpers.callback_prefix
         Vue::Helpers.cache_store[key] = compiled
         interpolated_wrapper = Vue::Helpers.script_wrapper.interpolate(callback_prefix: callback_prefix, key: key)
-      end     
+      end
       
+      def vue_root(root_name = Vue::Helpers.root_name, render_to_resource:false, **options, &block)
+        #block_result = capture_html(binding)
+        #puts "DEBUG: vue_root block_result: #{block_result.to_s}"
+        case render_to_resource
+        when true; vue_src(root_name)
+        when String; vue_src(root_name)
+        else vue_yield(root_name)
+        end
+      end
+      
+
       
       ### TODO: probably should be private.
       ### TODO: Should these be refinements, since they may interfere with other app or controller methods?
