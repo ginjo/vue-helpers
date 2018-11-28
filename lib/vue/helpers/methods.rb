@@ -108,7 +108,7 @@ module Vue
       def vue_yield(root_name = Vue::Helpers.root_name)
         #puts "VUE: #{vue}"
         return unless compiled = compile_vue_output(root_name)
-        interpolated_wrapper = Vue::Helpers.yield_wrapper.interpolate(compile_vue_output: compiled)
+        interpolated_wrapper = Vue::Helpers.yield_wrapper.interpolate(compiled: compiled)
       end
   
       # Outputs html script block with src pointing to tmp file on server.
@@ -122,12 +122,19 @@ module Vue
       end
       
       def vue_root(root_name = Vue::Helpers.root_name, render_to_resource:false, **options, &block)
-        #block_result = capture_html(binding)
-        #puts "DEBUG: vue_root block_result: #{block_result.to_s}"
-        case render_to_resource
+        block_result = capture_html(&block) if block_given?
+        
+        root_script_output = case render_to_resource
         when true; vue_src(root_name)
         when String; vue_src(root_name)
         else vue_yield(root_name)
+        end
+        
+        if block_result
+          #puts "DEBUG: vue_root block_result: #{block_result.to_s}"
+          concat_content("<div id=\"#{root_name}\">\n#{block_result}\n</div>\n#{root_script_output}")
+        else
+          root_output
         end
       end
       
