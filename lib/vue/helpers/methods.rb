@@ -63,10 +63,10 @@ module Vue
         #[instance_variables, local_variables].flatten.each{|v| puts "#{v}: #{eval(v.to_s)}"}; nil
         #puts "block.binding.eval(#{@outvar}) : #{block.binding.eval(@outvar.to_s)}"
         
-        component_content_ary = rendered_sfc_file(file_name:file_name, locals:locals, template_engine:template_engine)
+        component_content_ary = render_sfc_file(file_name:file_name, locals:locals, template_engine:template_engine)
         #puts "VC #{name} component_content_ary: #{component_content_ary}"
         
-        block_content = rendered_block(locals:locals, template_engine:template_engine, &block) if block_given?
+        block_content = render_block(locals:locals, template_engine:template_engine, &block) if block_given?
         #puts "VC #{name} block_content: #{block_content}"
         
         compiled_component_js = compile_component_js(name, *component_content_ary)
@@ -113,10 +113,10 @@ module Vue
         interpolated_wrapper = Vue::Helpers.external_js_wrapper_html.interpolate(callback_prefix: callback_prefix, key: key)
       end
       
-      def vue_root(root_name = Vue::Helpers.root_name, render_to_resource:false, **options, &block)
+      def vue_root(root_name = Vue::Helpers.root_name, external_resource:false, **options, &block)
         block_result = capture_html(&block) if block_given?
         
-        root_script_output = case render_to_resource
+        root_script_output = case external_resource
         when true; vue_root_external(root_name)
         when String; vue_root_external(root_name)
         else vue_root_inline(root_name)
@@ -145,47 +145,25 @@ module Vue
         @vue_roots[root_name.to_s] ||= RootApp.new
       end
       
-      def rendered_block(locals:{}, template_engine:current_template_engine, &block)
+      # Renders block of ruby template code.
+      # Returns string.
+      def render_block(locals:{}, template_engine:current_template_engine, &block)
         block_content = capture_html(*locals, &block) if block_given?
-        #puts "RENDERED_BLOCK captured block: #{block_content}"
+        #puts "render_block captured block: #{block_content}"
         block_content
-        #rendered_block_content = render_ruby_template(block_content.to_s, template_engine:template_engine, locals:locals)
       end
       
-      # TODO: This can be cleaned up and/or merged with parse_vue_sfc.
-      def rendered_sfc_file(file_name:nil, locals:{}, template_engine:current_template_engine)
-        # template, script = parse_vue_sfc(file_name.to_sym)
-        # r_template = render_ruby_template(template, locals:locals, template_engine:template_engine)
-        # r_script   = render_ruby_template(script, locals:locals, template_engine:template_engine)
-        # [r_template, r_script]
-        
+      # Renders and parses sfc file.
+      # Returns result from parse_sfc_file.
+      def render_sfc_file(file_name:nil, locals:{}, template_engine:current_template_engine)
         rendered_vue_file = render_ruby_template(file_name.to_sym, locals:locals, template_engine:template_engine)
         #puts "RENDERED_vue_file for '#{file_name}': #{rendered_vue_file}"
         parse_vue_sfc(rendered_vue_file.to_s)
       end
-      
-      def compile_component_html_block(name:nil, tag:nil, attributes:{}, block_content:'', locals:{})
-        # Adds 'is' attribute to html vue-component element,
-        # if the user specifies an alternate 'tag' (default tag is name-of-component).
-        el_name = tag || name
-        if tag
-          attributes['is'] = name
-        end
-              
-        # Compiles attributes string from given ruby hash.
-        attributes_string = attributes.inject(''){|o, kv| o.to_s << "#{kv[0]}=\"#{kv[1]}\" "}      
-        
-        rendered_component_block_template = Vue::Helpers.component_wrapper_html.interpolate(**
-          {
-            name:name,
-            tag:tag,
-            el_name:el_name,
-            block_content:block_content,
-            attributes_string:attributes_string
-          }.merge(locals)
-        ).to_s
-      end
   
+      # Parses a rendered sfc file.
+      # Returns [template-as-html, script-as-js].
+      # Must be HTML (already rendered from ruby template).
       def parse_vue_sfc(template_text_or_file)
         raw_template = begin
           case template_text_or_file
@@ -216,13 +194,30 @@ module Vue
           #puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
           nil
         end
-        
-        # # TODO: Review this. Does it do what we think and want?
-        # tilt_outvar = tilt_template.instance_variable_get :@outvar
-        # tilt_outvar_data = instance_variable_get "@#{tilt_outvar}" if tilt_outvar
-        # puts "render_ruby_template tilt_template @outvar: #{tilt_outvar}: #{tilt_outvar_data}"
-        
+
         tilt_template.render(self, **locals) if tilt_template.is_a?(Tilt::Template)
+      end
+      
+      def compile_component_html_block(name:nil, tag:nil, attributes:{}, block_content:'', locals:{})
+        # Adds 'is' attribute to html vue-component element,
+        # if the user specifies an alternate 'tag' (default tag is name-of-component).
+        el_name = tag || name
+        if tag
+          attributes['is'] = name
+        end
+              
+        # Compiles attributes string from given ruby hash.
+        attributes_string = attributes.inject(''){|o, kv| o.to_s << "#{kv[0]}=\"#{kv[1]}\" "}      
+        
+        rendered_component_block_template = Vue::Helpers.component_wrapper_html.interpolate(**
+          {
+            name:name,
+            tag:tag,
+            el_name:el_name,
+            block_content:block_content,
+            attributes_string:attributes_string
+          }.merge(locals)
+        ).to_s
       end
   
       #def compile_component_js(name, template, script)
@@ -260,7 +255,7 @@ module Vue
         
         # {block_content:block_content, vue_sfc:{name:name, vue_template:template, vue_script:script}}
         rendered_sfc_script = \
-          rendered_sfc_file(file_name:file_name.to_sym, locals:locals, template_engine:template_engine).to_a[1] ||
+          render_sfc_file(file_name:file_name.to_sym, locals:locals, template_engine:template_engine).to_a[1] ||
           Vue::Helpers.root_object_js.interpolate(**locals)
         
         vue_output << rendered_sfc_script
