@@ -4,7 +4,7 @@ require_relative 'utilities'
 
 module Vue
   module Helpers
-    using Refinements
+    using CoreRefinements
     
     # Rack middleware to serve sourced vue block, see https://redpanthers.co/rack-middleware/.
     # Usage: use Vue::Helpers::Server

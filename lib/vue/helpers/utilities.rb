@@ -1,7 +1,7 @@
 module Vue
   module Helpers
   
-    module Refinements
+    module CoreRefinements
       refine String do
         def interpolate(**locals)
           gsub(/\#\{/, '%{') % locals
