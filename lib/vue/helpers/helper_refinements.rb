@@ -34,7 +34,7 @@ module Vue
         # Renders and parses sfc file.
         # Returns result from parse_sfc_file.
         def render_sfc_file(file_name:nil, locals:{}, template_engine:current_template_engine)
-          rendered_vue_file = render_ruby_template(file_name.to_sym, locals:locals, template_engine:template_engine)
+          rendered_vue_file = render_ruby_template(file_name.to_sym, template_engine:template_engine, locals:locals)
           #puts "RENDERED_vue_file for '#{file_name}': #{rendered_vue_file}"
           parse_vue_sfc(rendered_vue_file.to_s)
         end
@@ -134,7 +134,11 @@ module Vue
           
           components = vue_app(root_name).components
           if components.is_a?(Hash) && components.size > 0 && values=components.values
-            vue_output << values.join(";\n")
+            #vue_output << values.join(";\n")
+            values.each do |cmp_hash|
+              vue_output << compile_component_js(cmp_hash[:name], cmp_hash[:vue_template], cmp_hash[:vue_script], register_local:register_local)
+              vue_output << ";\n"
+            end            
             vue_output << ";\n"
           else
             return
@@ -151,7 +155,7 @@ module Vue
           
           # {block_content:block_content, vue_sfc:{name:name, vue_template:template, vue_script:script}}
           rendered_root_sfc_js = \
-            render_sfc_file(file_name:file_name.to_sym, locals:locals, template_engine:template_engine).to_a[1] ||
+            render_sfc_file(file_name:file_name.to_sym, template_engine:template_engine, locals:locals).to_a[1] ||
             Vue::Helpers.root_object_js.interpolate(**locals)
           
           vue_output << rendered_root_sfc_js

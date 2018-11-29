@@ -80,10 +80,11 @@ module Vue
         block_content = render_block(locals:locals, template_engine:template_engine, &block) if block_given?
         #puts "VC #{name} block_content: #{block_content}"
         
-        compiled_component_js = compile_component_js(name, *component_content_ary)
+        # Build this later, when processign the vue root.
+        #compiled_component_js = compile_component_js(name, *component_content_ary)
         #puts "VC #{name} compiled_component_js: #{compiled_component_js}"
         
-        vue_app(root_name).components[name] = compiled_component_js
+        vue_app(root_name).components[name] = {name:name, vue_template:component_content_ary[0], vue_script:component_content_ary[1]}
         
         component_output = compile_component_html_block(
           name: name,
