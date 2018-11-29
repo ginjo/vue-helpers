@@ -15,13 +15,12 @@ require_relative 'utilities'
 #
 module Vue
   module Helpers
-  
     module Methods
     end
     
     module HelperRefinements
-      
       refine Methods do
+        
         using CoreRefinements
         
         # Renders block of ruby template code.
@@ -92,18 +91,34 @@ module Vue
             {
               name:name,
               tag:tag,
-              el_name:el_name,
+              el_name:el_name.to_s.kebabize,
               block_content:block_content,
               attributes_string:attributes_string
             }.merge(locals)
           ).to_s
         end
     
-        #def compile_component_js(name, template, script)
-        def compile_component_js(name, vue_template=nil, vue_script=nil)
+        # Build js string given compiled/parsed vue_template and vue_script strings.
+        # TODO: Consider allowing a generic component script if none provided.
+        def compile_component_js(name, vue_template=nil, vue_script=nil, **options)
           if vue_script
-            # Yes, this looks weird, but remember we're just replacing the beginning of the script block.
-            vue_script.gsub!(/export\s+default\s*\{/, "Vue.component('#{name}', {template: `#{vue_template}`,") << ")"
+            # Yes, the regex's looks weird, but remember we're just replacing the beginning of the script block.
+            
+            if options[:register_local]
+              # Locally registered component.
+              uninterpolated_string = vue_script.gsub(
+                /export\s+default\s*(\{|Vue.component\s*\([^\{]*\{)/,
+                'var #{name} = {template: `#{vue_template}`,'
+              )
+            else
+              # Globally registered component.
+              uninterpolated_string = vue_script.gsub(
+                /export\s+default\s*\{/,
+                'Vue.component("#{name}", {template: `#{vue_template}`,'
+              ) << ")"
+            end
+            
+            uninterpolated_string.interpolate(name: name.to_s.camelize, vue_template: vue_template.to_s.escape_backticks)
           end
         end
     
@@ -111,6 +126,7 @@ module Vue
             file_name:root_name,
             app_name:root_name.camelize,
             template_engine:current_template_engine,
+            register_local: false,
             &block
           )
           
@@ -125,20 +141,21 @@ module Vue
           end
           
           locals = {
-            root_name:        root_name,
+            root_name:        root_name.to_s.kebabize,
             app_name:         app_name,
             file_name:        file_name,
             template_engine:  template_engine,
+            components:       (components.keys.map{|k| k.to_s.camelize}.join(', ') if register_local),
             vue_data_json:    vue_app(root_name).data.to_json
           }
           
           # {block_content:block_content, vue_sfc:{name:name, vue_template:template, vue_script:script}}
-          rendered_sfc_script = \
+          rendered_root_sfc_js = \
             render_sfc_file(file_name:file_name.to_sym, locals:locals, template_engine:template_engine).to_a[1] ||
             Vue::Helpers.root_object_js.interpolate(**locals)
           
-          vue_output << rendered_sfc_script
-          vue_output << "; App = VueApp;"
+          vue_output << rendered_root_sfc_js
+          #vue_output << "; App = VueApp;"
         end  # compile_vue_output
             
         def secure_key
@@ -201,9 +218,10 @@ module Vue
         end
       
       end # refine Methods
-      
     end # HelperRefinements
 
     using HelperRefinements
+    
   end # Helpers
 end # Vue
+

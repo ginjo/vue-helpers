@@ -8,7 +8,16 @@ module Vue
         end
         
         def camelize
-          split(/[_-]/).collect(&:capitalize).join
+          #split(/[_-]/).collect(&:capitalize).join
+          split(/\W|_/).collect(&:capitalize).join
+        end
+        
+        def kebabize
+          split(/\W|_/).collect(&:downcase).join('-')
+        end
+        
+        def escape_backticks
+          gsub(/\`/,'\\\`')
         end
       end
     end

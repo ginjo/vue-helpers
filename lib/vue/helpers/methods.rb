@@ -37,13 +37,16 @@ module Vue
     self.inline_js_wrapper_html = '<script>#{compiled}</script>'
     self.root_app_wrapper_html = '<div id="#{root_name}">#{block_result}</div>#{root_script_output}'
     self.root_name = 'vue-app'
-    self.root_object_js = 'var #{app_name} = new Vue({el: ("##{root_name}"), data: #{vue_data_json}})'
+    self.root_object_js = 'var #{app_name} = new Vue({el: ("##{root_name}"), components: {#{components}}, data: #{vue_data_json}})'
     self.template_engine = :erb
     self.views_path = 'app/views'
     self.vue_outvar = '@_vue_outvar'
     
   
     # Include this module in your controller (or action, or routes, or whatever).
+    #
+    # SEE helper_refinements.rb for the helpers' supporting methods!
+    #
     module Methods
     
       def self.included(other)
@@ -106,15 +109,15 @@ module Vue
       end
     
       # Ouputs html script block of entire collection of vue roots and components.
-      def vue_root_inline(root_name = Vue::Helpers.root_name)
+      def vue_root_inline(root_name = Vue::Helpers.root_name, **options)
         #puts "VUE: #{vue}"
-        return unless compiled = compile_vue_output(root_name)
+        return unless compiled = compile_vue_output(root_name, **options)
         interpolated_wrapper = Vue::Helpers.inline_js_wrapper_html.interpolate(compiled: compiled)
       end
   
       # Outputs html script block with src pointing to tmp file on server.
-      def vue_root_external(root_name = Vue::Helpers.root_name)
-        return unless compiled = compile_vue_output(root_name)
+      def vue_root_external(root_name = Vue::Helpers.root_name, **options)
+        return unless compiled = compile_vue_output(root_name, **options)
         key = secure_key
         callback_prefix = Vue::Helpers.callback_prefix
         Vue::Helpers.cache_store[key] = compiled
@@ -126,9 +129,9 @@ module Vue
         block_result = capture_html(&block) if block_given?
         
         root_script_output = case external_resource
-        when true; vue_root_external(root_name)
-        when String; vue_root_external(root_name)
-        else vue_root_inline(root_name)
+        when true; vue_root_external(root_name, **options)
+        when String; vue_root_external(root_name, **options)
+        else vue_root_inline(root_name, **options)
         end
         
         if block_result
