@@ -21,7 +21,10 @@ module Vue
         component_wrapper_html
         default_outvar
         external_js_wrapper_html
+        external_resource
         inline_js_wrapper_html
+        minify
+        register_local
         root_app_wrapper_html
         root_name
         root_object_js
@@ -36,7 +39,10 @@ module Vue
     self.component_wrapper_html = '<#{el_name} #{attributes_string}>#{block_content}</#{el_name}>'
     self.default_outvar = '@_erbout'
     self.external_js_wrapper_html = '<script src="#{callback_prefix}/#{key}"></script>'
+    self.external_resource = false
     self.inline_js_wrapper_html = '<script>#{compiled}</script>'
+    self.minify = false
+    self.register_local = false
     self.root_app_wrapper_html = '<div id="#{root_name}">#{block_result}</div>#{root_script_output}'
     self.root_name = 'vue-app'
     self.root_object_js = 'var #{app_name} = new Vue({el: ("##{root_name}"), components: {#{components}}, data: #{vue_data_json}})'
@@ -127,7 +133,7 @@ module Vue
         interpolated_wrapper = Vue::Helpers.external_js_wrapper_html.interpolate(callback_prefix: callback_prefix, key: key)
       end
       
-      def vue_root(root_name = Vue::Helpers.root_name, external_resource:false, **options, &block)
+      def vue_root(root_name = Vue::Helpers.root_name, external_resource:Vue::Helpers.external_resource, **options, &block)
         #puts "VUE_ROOT self: #{self}, methods: #{methods.sort.to_yaml}"
         block_result = capture_html(&block) if block_given?
         

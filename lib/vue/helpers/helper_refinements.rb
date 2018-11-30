@@ -127,8 +127,8 @@ module Vue
             file_name:root_name,
             app_name:root_name.camelize,
             template_engine:current_template_engine,
-            register_local: false,
-            minify: false,
+            register_local: Vue::Helpers.register_local,
+            minify: Vue::Helpers.minify,
             &block
           )
           
