@@ -26,8 +26,8 @@ module Vue
         
         # Renders block of ruby template code.
         # Returns string.
-        def render_block(locals:{}, template_engine:current_template_engine, &block)
-          block_content = capture_html(*locals, &block) if block_given?
+        def render_block(*args, root_name:Vue::Helpers.root_name, **locals, &block)
+          block_content = capture_html(*args, root_name:root_name, **locals, &block) if block_given?
           #puts "render_block captured block: #{block_content}"
           block_content
         end
@@ -129,6 +129,7 @@ module Vue
             template_engine:current_template_engine,
             register_local: Vue::Helpers.register_local,
             minify: Vue::Helpers.minify,
+            # Block may not be needed here, it's handled in 'vue_root'.
             &block
           )
           
@@ -198,7 +199,8 @@ module Vue
           instance_variable_set(buffer_name, '')
         end
         
-        def capture_html(*args, buffer_name:nil, &block)
+        # TODO: Find out how, if possible, to pass root_name (and other options?) on to sub-modules inside block.
+        def capture_html(*args, root_name:Vue::Helpers.root_name, buffer_name:nil, **locals, &block)
           #puts "CAPTURE_HTML self: #{self}, methods: #{methods.sort.to_yaml}"
           return unless block_given?
           #puts "CAPTURE_HTML current_template_engine: #{current_template_engine}."

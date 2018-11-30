@@ -1,8 +1,8 @@
 # VueHelpers
 
-The vue-helpers gem provides *helper* methods to facilitate writing front-end code in Vuejs for your Ruby backend application... All without any back-end Javascript engine.
+The vue-helpers gem provides *helper* methods for writing front-end code with Vuejs in your Ruby backend application... All without any back-end Javascript engine.
 
-Vuejs is a Javascript framework for binding html elements to data structures. It's an awesome tool for building responsive front-end applications, and it pairs well with Ruby backend servers.
+Vuejs is a Javascript framework that dynamically binds html elements to data structures. It's a powerful tool for building responsive front-end applications, and it pairs well with Ruby.
 
 A common way to bridge the front-end Vuejs and the back-end Ruby is to use a complicated set of server-side Javascript tools. If you're developing an extensive Javascript application that relies on both front-and-back-end Javascript, that might be the best way to go. But if you're developing a Ruby application and want to keep your Javascript strictly on the front-end, vue-helpers might be what you're looking for. 
 
@@ -12,8 +12,10 @@ Some highlights of the gem are:
 * Packages and sends all vue-related code to client.
 * Parses single-file-component.vue files.
 * Allows composing Vuejs components with your favorite Ruby templating system.
-* No backend Javascript engine needed.
-  The only dependency is Tilt (and Rack if you use the script-callback option).
+* Allows multiple Vue root apps.
+* Allows customization/replacement of all boilerplate code.
+* Allows passing variables and data to the Vue root and component objects.
+* No backend Javascript engine needed. The only absolute dependency is Tilt.
 
 
 ## Installation
@@ -32,25 +34,123 @@ Or install it yourself as:
 
     $ gem install vue-helpers
     
-    
-## Usage
 
-There are only three methods in vue-helpers that you need to know.
+## Simple Example
 
-```ruby
-  vue_component(name, <optional-root-name>, options, &block)
+views/my-component.vue.erb
+```erb  
+  <template>
+    <div>
+      <p>This is a Vuejs single-file-component {{ message }}</p>
+      <slot></slot>
+    </div>
+  </template>
   
-  vue_yield(name)
+  <script>
+    export default {
+      props: ['message']
+    }
+  </script>
   
-  vue_src(name)
+  <!-- Scoped styles are not supported by the vue-helpers gem. -->
 ```
 
-These methods parse your .vue files, insert Vue tags in your ruby template, and package all the boilerplate and compiled js code for delivery to the client. You don't need to worry about where to inline your components, where to put the Vue root-app, or how to configure Webpack or Vue loader. 
+views/foo.erb
+```erb  
+  <h2>My Page of Interesting Info</h2>
+  <% vue_component 'my-component', message:'Hello World!' %>
+    <p>Some fabulous information</p>
+  <% end %>
+  <div>Some more stuff here</div>
+```
 
-Everything else is just plain Vue.
+vues/layout.erb
+```erb  
+  <html>
+    <head></head>
+    <body>
+      <% vue_root do %>
+        <h1>My Vue App</h1>
+        <% yield %>
+      <% end %>
+    </body>
+  </html>
+```
+
+Result sent to the browser
+```html
+  <html><head></head><body>
+    <div id="vue-app">
+      <h1>My Vue App</h1>
+      <h2>My Page of Interesting Info</h2>
+      <my-component message="Hellow World!">
+        <p>Some fabulous information</p>
+      </my-component>    
+      <div>Some more stuff here</div>
+    </div>
+  
+    <script>
+      var MyComponent = {
+        template: `
+          <div>
+            <p>This is a Vuejs single-file-component {{ message }}</p>
+            <slot></slot>
+          </div>        
+        `,
+        props: ['message']
+      };
+      var VueApp = new Vue({
+        el: "#vue-app",
+        components: {
+          MyComponent: MyComponent
+        }
+      })
+    </script>
+  </body></html>
+````
+
+After Vuejs parses the script body
+```html
+  <html><head></head><body>
+    <div id="vue-app">
+      <h1>My Vue App</h1>
+      <h2>My Page of Interesting Info</h2>
+      <div>
+        <p>This is a Vuejs single-file-component Hello World!</p>
+        <p>Some fabulous information</p>
+      </div>
+      <div>Some more stuff here</div>
+    </div>
+
+    <script>
+      //...
+    </script>
+  </body></html>  
+```
 
 
-## Examples
+## Usage
+
+There are only two methods in vue-helpers that you need to know.
+
+```ruby
+  vue_component(component-name, <optional-root-name>, <options>, &block)
+
+  vue_root(root-app-name, <options>, &block)  
+```
+
+These methods parse your .vue files, insert Vue tags in your ruby template, and package all the boilerplate and compiled js code for delivery to the client. You don't need to worry about where to inline your components, where to put the Vue root-app, or how to configure Webpack or Vue loader.
+
+Let look at these methods in more detail.
+
+#### vue_component()
+  Inserts...
+  
+#### vue_root()
+  Inserts...
+
+
+## More Examples
 
 Here's an example Rack app using vue-helpers to define and package a Vuejs front-end app.
 

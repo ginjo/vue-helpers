@@ -85,7 +85,7 @@ module Vue
         component_content_ary = render_sfc_file(file_name:file_name, locals:locals, template_engine:template_engine)
         #puts "VC #{name} component_content_ary: #{component_content_ary}"
         
-        block_content = render_block(locals:locals, template_engine:template_engine, &block) if block_given?
+        block_content = render_block(root_name:root_name, **locals, &block) if block_given?
         #puts "VC #{name} block_content: #{block_content}"
         
         # Build this later, when processign the vue root.
@@ -135,7 +135,7 @@ module Vue
       
       def vue_root(root_name = Vue::Helpers.root_name, external_resource:Vue::Helpers.external_resource, **options, &block)
         #puts "VUE_ROOT self: #{self}, methods: #{methods.sort.to_yaml}"
-        block_result = capture_html(&block) if block_given?
+        block_result = capture_html(root_name:root_name, **options, &block) if block_given?
         
         root_script_output = case external_resource
         when true; vue_root_external(root_name, **options)
