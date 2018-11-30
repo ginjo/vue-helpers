@@ -69,7 +69,7 @@ vues/layout.erb
   <html>
     <head></head>
     <body>
-      <% vue_root do %>
+      <% vue_app do %>
         <h1>My Vue App</h1>
         <% yield %>
       <% end %>
@@ -136,7 +136,7 @@ There are only two methods in vue-helpers that you need to know.
 ```ruby
   vue_component(component-name, <optional-root-name>, <options>, &block)
 
-  vue_root(root-app-name, <options>, &block)  
+  vue_app(root-app-name, <options>, &block)  
 ```
 
 These methods parse your .vue files, insert Vue tags in your ruby template, and package all the boilerplate and compiled js code for delivery to the client. You don't need to worry about where to inline your components, where to put the Vue root-app, or how to configure Webpack or Vue loader.
@@ -146,7 +146,7 @@ Let look at these methods in more detail.
 #### vue_component()
   Inserts...
   
-#### vue_root()
+#### vue_app()
   Inserts...
 
 

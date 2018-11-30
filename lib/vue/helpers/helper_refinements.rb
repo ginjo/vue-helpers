@@ -36,7 +36,6 @@ module Vue
         # Returns result from parse_sfc_file.
         def render_sfc_file(file_name:nil, locals:{}, template_engine:current_template_engine)
           rendered_vue_file = render_ruby_template(file_name.to_sym, template_engine:template_engine, locals:locals)
-          #puts "RENDERED_vue_file for '#{file_name}': #{rendered_vue_file}"
           parse_vue_sfc(rendered_vue_file.to_s)
         end
     
@@ -78,51 +77,34 @@ module Vue
         end
         
         def compile_component_html_block(name:nil, tag:nil, attributes:{}, block_content:'', locals:{})
+          
           # Adds 'is' attribute to html vue-component element,
           # if the user specifies an alternate 'tag' (default tag is name-of-component).
-          el_name = tag || name
           if tag
             attributes['is'] = name
           end
-                
-          # Compiles attributes string from given ruby hash.
-          attributes_string = attributes.inject(''){|o, kv| o.to_s << "#{kv[0]}=\"#{kv[1]}\" "}      
-          
-          rendered_component_block_template = Vue::Helpers.component_wrapper_html.interpolate(**
-            {
-              name:name,
-              tag:tag,
-              el_name:el_name.to_s.kebabize,
-              block_content:block_content,
-              attributes_string:attributes_string
-            }.merge(locals)
-          ).to_s
+
+          wrapper(:component_call_html, locals:locals,
+            name:name,
+            tag:tag,
+            el_name:(tag || name).to_s.kebabize,
+            block_content:block_content,
+            attributes_string:attributes.to_html_attributes
+          )
         end
     
         # Build js string given compiled/parsed vue_template and vue_script strings.
         # TODO: Consider allowing a generic component script if none provided.
-        def compile_component_js(name, vue_template=nil, vue_script=nil, **options)
-          if vue_script
-            # Yes, the regex's looks weird, but remember we're just replacing the beginning of the script block.
+        # Note that these keyword args are all required.
+        def compile_component_js(name: , vue_template: , vue_script: , **options)
+            js_template = options[:register_local] \
+              ? 'var #{name} = {template: `#{vue_template}`, \2'
+              : 'var #{name} = Vue.component("#{name}", {template: `#{vue_template}`, \2)'  # ) << ")"
             
-            if options[:register_local]
-              # Locally registered component.
-              uninterpolated_string = vue_script.gsub(
-                /export\s+default\s*(\{|Vue.component\s*\([^\{]*\{)/,
-                'var #{name} = {template: `#{vue_template}`,'
-              )
-            else
-              # Globally registered component.
-              uninterpolated_string = vue_script.gsub(
-                /export\s+default\s*\{/,
-                'var #{name} = Vue.component("#{name}", {template: `#{vue_template}`,'
-              ) << ")"
-            end
-            
-            # TODO: Escaping backticks will prevent templates with nested backtick blocks, like ${``} .
-            # Should find a better solution, or just don't escape backticks, or make it an option (yes!).
-            uninterpolated_string.interpolate(name: name.to_s.camelize, vue_template: vue_template.to_s.escape_backticks)
-          end
+            # TODO: Make escaping backticks optional, as they could break user templates with nested backtick blocks, like ${``}.
+            vue_script.gsub(/export\s+default\s*(\{|Vue.component\s*\([^\{]*\{)(.*$)/m,
+              js_template)
+              .interpolate(name: name.to_s.camelize, vue_template: vue_template.to_s.escape_backticks)
         end
     
         def compile_vue_output(root_name = Vue::Helpers.root_name,
@@ -131,17 +113,17 @@ module Vue
             template_engine:current_template_engine,
             register_local: Vue::Helpers.register_local,
             minify: Vue::Helpers.minify,
-            # Block may not be needed here, it's handled in 'vue_root'.
+            # Block may not be needed here, it's handled in 'vue_app'.
             &block
           )
           
           vue_output = ""
           
-          components = vue_app(root_name).components
+          components = vue_root(root_name).components
           if components.is_a?(Hash) && components.size > 0 && values=components.values
             #vue_output << values.join(";\n")
             values.each do |cmp_hash|
-              vue_output << compile_component_js(cmp_hash[:name], cmp_hash[:vue_template], cmp_hash[:vue_script], register_local:register_local)
+              vue_output << compile_component_js(**cmp_hash, register_local:register_local)
               vue_output << ";\n"
             end            
             vue_output << ";\n"
@@ -155,7 +137,7 @@ module Vue
             file_name:        file_name,
             template_engine:  template_engine,
             components:       (components.keys.map{|k| k.to_s.camelize}.join(', ') if register_local),
-            vue_data_json:    vue_app(root_name).data.to_json
+            vue_data_json:    vue_root(root_name).data.to_json
           }
           
           # {block_content:block_content, vue_sfc:{name:name, vue_template:template, vue_script:script}}
@@ -173,6 +155,12 @@ module Vue
           end
           #vue_output << "; App = VueApp;"
         end  # compile_vue_output
+        
+        
+        def wrapper(wrapper_name, locals:{}, **options)
+          Vue::Helpers.send(wrapper_name).interpolate(**options.merge(locals))
+        end
+        
             
         def secure_key
           SecureRandom.urlsafe_base64(32)
