@@ -1,3 +1,4 @@
+require 'uglifier'
 require_relative 'utilities'
 
 # This file contains the bulk of vue-helpers functions.
@@ -114,7 +115,7 @@ module Vue
               # Globally registered component.
               uninterpolated_string = vue_script.gsub(
                 /export\s+default\s*\{/,
-                'Vue.component("#{name}", {template: `#{vue_template}`,'
+                'var #{name} = Vue.component("#{name}", {template: `#{vue_template}`,'
               ) << ")"
             end
             
@@ -127,6 +128,7 @@ module Vue
             app_name:root_name.camelize,
             template_engine:current_template_engine,
             register_local: false,
+            minify: false,
             &block
           )
           
@@ -159,6 +161,13 @@ module Vue
             Vue::Helpers.root_object_js.interpolate(**locals)
           
           vue_output << rendered_root_sfc_js
+          
+          if minify
+            #extra_spaces_removed = vue_output.gsub(/(^\s+)|(\s+)|(\s+$)/){|m| {$1 => "\\\n", $2 => ' ', $3 => "\\\n"}[m]}
+            Uglifier.compile(vue_output, harmony:true).gsub(/\s{2,}/, ' ')
+          else
+            vue_output
+          end
           #vue_output << "; App = VueApp;"
         end  # compile_vue_output
             

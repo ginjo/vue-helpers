@@ -11,6 +11,8 @@ module Vue
     using CoreRefinements
     using HelperRefinements
     
+    # TODO: Consider moving all config code to a config module or config file.
+    #
     class << self
       # Vue::Helpers defaults.
       attr_accessor *%w(
