@@ -119,6 +119,8 @@ module Vue
               ) << ")"
             end
             
+            # TODO: Escaping backticks will prevent templates with nested backtick blocks, like ${``} .
+            # Should find a better solution, or just don't escape backticks, or make it an option (yes!).
             uninterpolated_string.interpolate(name: name.to_s.camelize, vue_template: vue_template.to_s.escape_backticks)
           end
         end

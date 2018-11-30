@@ -118,6 +118,7 @@ module Vue
       end
     
       # Ouputs html script block of entire collection of vue roots and components.
+      # TODO: Should this use x-templates?
       def vue_root_inline(root_name = Vue::Helpers.root_name, **options)
         #puts "VUE: #{vue}"
         return unless compiled = compile_vue_output(root_name, **options)
@@ -125,6 +126,8 @@ module Vue
       end
   
       # Outputs html script block with src pointing to tmp file on server.
+      # Note that x-templates will not work with external-resource scheme,
+      # so this will always use template literals (backticks).
       def vue_root_external(root_name = Vue::Helpers.root_name, **options)
         return unless compiled = compile_vue_output(root_name, **options)
         key = secure_key
