@@ -65,14 +65,15 @@ module Vue
       # Stores all root apps defined by vue-helpers, plus their compiled components.
       def vue_root(root_name = Vue::Helpers.root_name)
         @vue_root ||= {}
-        @vue_root[root_name.to_s] ||= RootApp.new
+        @vue_root[root_name] ||= VueObject.new(root_name)
       end
   
       # Inserts Vue component-call block in html template.
       # Name & file_name refer to file-name.vue.<template_engine> SFC file. Example: products.vue.erb.
       def vue_component(name,
           root_name:Vue::Helpers.root_name,
-          attributes:{}, tag:nil,
+          attributes:{},
+          tag:nil,
           file_name:name,
           locals:{},
           template_engine:current_template_engine,
@@ -81,12 +82,26 @@ module Vue
         
         component_content_ary = render_sfc_file(file_name:file_name, locals:locals, template_engine:template_engine)
         
-        block_content = render_block(root_name:root_name, **locals, &block) if block_given?
+        block_content = capture_html(root_name:root_name, **locals, &block) if block_given?
         
         # Build this later, when processign the vue root.
         #compiled_component_js = compile_component_js(name, *component_content_ary)
         
         vue_root(root_name).components[name] = {name:name, vue_template:component_content_ary[0], vue_script:component_content_ary[1]}
+ 
+        # # Proposed new way:
+        # vue_root(root_name).add_component(name,
+        #   root_name:root_name,
+        #   file_name:name,
+        #   attributes:attributes,
+        #   tag:tag,
+        #   locals:locals,
+        #   template_engine:template_engine,
+        #   context:block        
+        # )
+        #
+        # Then we can do this:
+        #   component_output = vue_root(root_name)[name].html_call_block
         
         component_output = compile_component_html_block(
           name: name,
@@ -133,6 +148,11 @@ module Vue
         when String; vue_app_external(root_name, **options)
         else vue_app_inline(root_name, **options)
         end
+        
+        # # Proposed new way:
+        # @root_app_object.render(<options>)
+        
+        puts @vue_root.to_yaml
         
         if block_result
           concat_content(Vue::Helpers.root_app_html.interpolate(
