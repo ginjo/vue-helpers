@@ -20,16 +20,21 @@ module Vue
     # The @vue_root hash would still keep all of these at a flat level, keyed by unique name.
     class VueObject
       DEFAULTS = {
-        name:          nil,
-        root_name:     nil,
-        file_name:     nil,
-        attributes:    nil,
-        raw_dot_vue:   nil,
-        html_template: nil,
-        js_object:     nil,
-        data:          {},
-        # Should eventually be an array, just like in js object.
-        components: {}
+        name:             nil,
+        root_name:        nil,
+        file_name:        nil,
+        attributes:       nil,
+        template_engine:  nil,
+        locals:           {},
+        context:          nil,
+        
+        data:             {},
+        # Should eventually be an array, just like in js object, but original version was a hash.
+        components:       [],
+        
+        rendered_dot_vue: nil,
+        parsed_template:  nil,
+        parsed_object:    nil,
       }
       
       attr_accessor :original_options, *DEFAULTS.keys
@@ -45,28 +50,18 @@ module Vue
       
       # Renders and parses sfc file.
       # Returns result from parse_sfc_file.
-      def render_sfc_file(file_name:nil, locals:{}, template_engine:current_template_engine)
-        rendered_vue_file = render_ruby_template(file_name.to_sym, template_engine:template_engine, locals:locals)
+      def load_dot_vue
+        self.rendered_dot_vue = render_ruby_template(file_name.to_sym, template_engine:template_engine, locals:locals)
         parse_vue_sfc(rendered_vue_file.to_s)
       end
       
       # Parses a rendered sfc file.
       # Returns [template-as-html, script-as-js].
       # Must be HTML (already rendered from ruby template).
-      def parse_vue_sfc(template_text_or_file)
-        raw_template = begin
-          case template_text_or_file
-          when Symbol; File.read(template_path(template_text_or_file))
-          when String; template_text_or_file
-          end
-        rescue
-          # TODO: Make this a logger.debug output.
-          #puts "Parse_vue_sfc error getting template file: #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
-          nil
-        end
-        a,template,c,script = raw_template.to_s.match(/(.*<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
+      def parse_vue_sfc(template_text=rendered_dot_vue)
+        a,self.parsed_template,c,self.parsed_object = template_text.to_s.match(/(.*<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
         #{vue_template:template, vue_script:script}
-        [template, script]
+        #[template, script]
       end
       
       # TODO: Do we need this: 'ERB::Util.html_escape string'. It will convert all html tags like this: "Hi I&#39;m some text. 2 &lt; 3".
