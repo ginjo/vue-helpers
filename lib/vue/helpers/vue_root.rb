@@ -2,6 +2,9 @@ require_relative 'utilities'
 require_relative 'helper_refinements'
 
 module Vue
+
+  Debug = {}
+
   module Helpers
     using CoreRefinements
     using HelperRefinements
@@ -17,152 +20,147 @@ module Vue
     end
     
     # TODO: Consider this as a base for VueRoot and VueComponent classes.
-    # The @vue_root hash would still keep all of these at a flat level, keyed by unique name.
+    #
+    # TODO: Yikes!!! Vue components can be called MULTIPLE times,
+    # so we can't store the calling args OR the block here.
+    # Also, we can't pass locals to the dot-vue file, since there is
+    # only ONE of them per request, per component-name.
+    # Locals are handled by Vue itself in the browser.
+    #
+    # If the user passed locals to the rendering call in the controller,
+    # do we need to pass those locals down the chain?
+    # To the dot-vue file?
+    # To the block-capture?
+    #
+    # But note that Vue root-apps can only be called once,
+    # so should we continue to store the vue-app calling args & block here,
+    # or pass them in at run-time as well? I think it ALL has to be dynamic.
+    #
+    # So note that most of the commented-out options here will need to be
+    # methods on the VueObject.
+    #
     class VueObject
       DEFAULTS = {
+        # Only what's necessary to load dot-vue file.
         name:             nil,
         root_name:        nil,
         file_name:        nil,
-        attributes:       nil,
         template_engine:  nil,
-        locals:           {},
         context:          nil,
         
+        # Vue-specific options for browser processing.
+        # TODO: We can accept :data, :components, and other vue-spepcific options,
+        # but multiple calls will only respect the last (or first?) one.
+        # ... Unless we create a fancy method to merge vue-component options.
         data:             {},
-        # Should eventually be an array, just like in js object, but original version was a hash.
         components:       [],
+        watch:            {},
         
+        # Can't store rendered block, since it will be different with each component call.
+        #rendered_block:   nil,
+        
+        # These I think we can still store, since they shouldn't change throughout a single request.
         rendered_dot_vue: nil,
         parsed_template:  nil,
-        parsed_object:    nil,
+        parsed_script:    nil,
       }
       
-      attr_accessor :original_options, *DEFAULTS.keys
+      attr_accessor *DEFAULTS.keys
+      
+      
+      ## Internal methods
       
       def initialize(name, **options)
         @name = name
-        @original_options = DEFAULTS.dup.merge(options)
-        @original_options.each do |k,v|
-          instance_variable_set("@#{k}", v) if v
-        end
-        puts "VueObject created: #{name}, self: #{self}"
+        Debug[name] = self
+        #puts "VueObject created: #{name}, self: #{self}"
+        initialize_options(**options) if options.size > 0
       end
       
+      def initialize_options(**options)
+        # This is experimental, just to see if this works here away from the controller instance.
+        #@template_engine = Tilt.current_template
+
+        merged_options = DEFAULTS.dup.merge(options)
+        merged_options.each do |k,v|
+          instance_variable_set("@#{k}", v) if v
+        end
+        
+        # TODO: Do this (handle dynamic defaults) for other parameters too, like file_name, app_name, etc.
+        if context
+          @template_engine ||= context.current_template_engine
+          vue_object_list[name] = self
+        end
+        
+        load_dot_vue if file_name
+        puts "VueObject initialized options: #{name}, self: #{self}"
+        self
+      end
+
       # Renders and parses sfc file.
-      # Returns result from parse_sfc_file.
+      # Used to be 'render_sfc_file'
       def load_dot_vue
-        self.rendered_dot_vue = render_ruby_template(file_name.to_sym, template_engine:template_engine, locals:locals)
-        parse_vue_sfc(rendered_vue_file.to_s)
+        self.rendered_dot_vue = context.render_ruby_template(file_name.to_sym, template_engine:template_engine)
+        parse_vue_sfc(rendered_dot_vue.to_s)
       end
       
       # Parses a rendered sfc file.
       # Returns [template-as-html, script-as-js].
       # Must be HTML (already rendered from ruby template).
       def parse_vue_sfc(template_text=rendered_dot_vue)
-        a,self.parsed_template,c,self.parsed_object = template_text.to_s.match(/(.*<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
+        a,self.parsed_template,c,self.parsed_script = template_text.to_s.match(/(.*<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
         #{vue_template:template, vue_script:script}
         #[template, script]
       end
-      
-      # TODO: Do we need this: 'ERB::Util.html_escape string'. It will convert all html tags like this: "Hi I&#39;m some text. 2 &lt; 3".
-      def render_ruby_template(template_text_or_file, locals:{}, template_engine:current_template_engine)
-        #puts "RENDER_ruby_template(\"#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}\", locals:<locals>, template_engine:#{template_engine})"
-          
-        tilt_template = begin
-          case template_text_or_file
-          when Symbol; Tilt.new(template_path(template_text_or_file, template_engine:template_engine), 1, outvar: Vue::Helpers.vue_outvar)
-          when String; Tilt.template_for(template_engine).new(nil, 1, outvar: Vue::Helpers.vue_outvar){template_text_or_file}
-          end
-        rescue
-          # TODO: Make this a logger.debug output.
-          #puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
-          nil
-        end
 
-        tilt_template.render(self, **locals) if tilt_template.is_a?(Tilt::Template)
-      end
 
-      def compile_component_html_block(name:nil, tag:nil, attributes:{}, block_content:'', locals:{})
+      ## Called from user-space by vue_root, vue_app, vue_compoenent.
         
+      # Renders the html block to replace ruby view-template tags.
+      # NOTE: Locals may be useless here.
+      # TODO: Should this be in the VueComponent class?
+      # Used to be 'to_html_block'
+      def render(tag_name=nil, locals:{}, attributes:{}, &block)
         # Adds 'is' attribute to html vue-component element,
-        # if the user specifies an alternate 'tag' (default tag is name-of-component).
-        if tag
+        # if the user specifies an alternate 'tag_name' (default tag_name is name-of-component).
+        if tag_name
           attributes['is'] = name
         end
-
+        
         wrapper(:component_call_html, locals:locals,
           name:name,
-          tag:tag,
-          el_name:(tag || name).to_s.kebabize,
-          block_content:block_content,
+          tag_name:tag_name,
+          el_name:(tag_name || name).to_s.kebabize,
+          block_content:(context.capture_html(root_name:root_name, **locals, &block) if block_given?),
           attributes_string:attributes.to_html_attributes
         )
       end
   
-      # Build js string given compiled/parsed vue_template and vue_script strings.
-      # TODO: Consider allowing a generic component script if none provided.
-      # Note that these keyword args are all required.
-      def compile_component_js(name: , vue_template: , vue_script: , **options)
-          js_template = options[:register_local] \
-            ? 'var #{name} = {template: `#{vue_template}`, \2'
-            : 'var #{name} = Vue.component("#{name}", {template: `#{vue_template}`, \2)'  # ) << ")"
+      # Builds js output string.
+      def to_component_js(register_local:false, template_literal:true)
+          template_spec = template_literal ? "\`#{parsed_template.to_s.escape_backticks}\`" : "'##{name}-template'"
+          js_output = register_local \
+            ? 'var #{name} = {template: #{template_spec}, \2'
+            : 'var #{name} = Vue.component("#{name}", {template: #{template_spec}, \2)'  # ) << ")"
           
           # TODO: Make escaping backticks optional, as they could break user templates with nested backtick blocks, like ${``}.
-          vue_script.gsub(/export\s+default\s*(\{|Vue.component\s*\([^\{]*\{)(.*$)/m,
-            js_template)
-            .interpolate(name: name.to_s.camelize, vue_template: vue_template.to_s.escape_backticks)
+          parsed_script.gsub(/export\s+default\s*(\{|Vue.component\s*\([^\{]*\{)(.*$)/m,
+            js_output)
+            .interpolate(name: name.to_s.camelize, template_spec: template_spec)
       end
-  
-      def compile_vue_output(root_name = Vue::Helpers.root_name,
-          file_name:root_name,
-          app_name:root_name.camelize,
-          template_engine:current_template_engine,
-          register_local: Vue::Helpers.register_local,
-          minify: Vue::Helpers.minify,
-          # Block may not be needed here, it's handled in 'vue_app'.
-          &block
-        )
-        
-        vue_output = ""
-        
-        components = vue_root(root_name).components
-        if components.is_a?(Hash) && components.size > 0 && values=components.values
-          #vue_output << values.join(";\n")
-          values.each do |cmp_hash|
-            vue_output << compile_component_js(**cmp_hash, register_local:register_local)
-            vue_output << ";\n"
-          end            
-          vue_output << ";\n"
-        else
-          return
-        end
-        
-        locals = {
-          root_name:        root_name.to_s.kebabize,
-          app_name:         app_name,
-          file_name:        file_name,
-          template_engine:  template_engine,
-          components:       (components.keys.map{|k| k.to_s.camelize}.join(', ') if register_local),
-          vue_data_json:    vue_root(root_name).data.to_json
-        }
-        
-        # {block_content:block_content, vue_sfc:{name:name, vue_template:template, vue_script:script}}
-        rendered_root_sfc_js = \
-          render_sfc_file(file_name:file_name.to_sym, template_engine:template_engine, locals:locals).to_a[1] ||
-          Vue::Helpers.root_object_js.interpolate(**locals)
-        
-        vue_output << rendered_root_sfc_js
-        
-        if minify
-          #extra_spaces_removed = vue_output.gsub(/(^\s+)|(\s+)|(\s+$)/){|m| {$1 => "\\\n", $2 => ' ', $3 => "\\\n"}[m]}
-          Uglifier.compile(vue_output, harmony:true).gsub(/\s{2,}/, ' ')
-        else
-          vue_output
-        end
-        #vue_output << "; App = VueApp;"
-      end  # compile_vue_output
       
       
+      def to_x_template
+      end
+      
+      def vue_object_list
+        context.instance_variable_get(:@vue_root) || context.instance_variable_set(:@vue_root, {})
+      end
+      
+      def vue_root(*args)
+        context.vue_root(*args)
+      end
+
       def wrapper(wrapper_name, locals:{}, **options)
         Vue::Helpers.send(wrapper_name).interpolate(**options.merge(locals))
       end
@@ -170,11 +168,85 @@ module Vue
       def secure_key
         SecureRandom.urlsafe_base64(32)
       end
-
-
-
+      
+      def js_var_name
+        name.camelize
+      end
     
     end # VueObject
+    
+    
+    class VueRoot < VueObject
+      def type; 'root'; end
+      
+      # TODO: This needs to be just '.component', since it could 'add' or 'get-if-exists'.
+      def component(_name, **options)
+        new_c = VueComponent.new(_name, **options.merge({root_name:(name || root_name)}))
+      end
+      
+      def compile_output_js( **options  # generic opts placeholder until we get the args/opts flow worked out.
+          # root_name = Vue::Helpers.root_name,
+          # file_name:root_name,
+          # app_name:root_name.camelize,
+          # #template_engine:context.current_template_engine,
+          # register_local: Vue::Helpers.register_local,
+          # minify: Vue::Helpers.minify,
+          # # Block may not be needed here, it's handled in 'vue_app'.
+          # &block
+        )
+        
+        puts "I am component '#{name}' and my @context is '#{@context}'"        
+        
+        vue_output = "console.log('placeholder vue output');\n"
+        
+        components = vue_object_list.collect(){|k,v| v if v.type == 'component' && v.root_name == name}.compact
+        
+        if components.size > 0
+          #vue_output << values.join(";\n")
+          components.each do |cmp|
+            #vue_output << compile_component_js(**cmp_hash, register_local:register_local)
+            vue_output << cmp.to_component_js
+            vue_output << ";\n"
+          end            
+          #vue_output << ";\n"
+        else
+          return
+        end
+        
+        locals = {
+          root_name:        root_name.to_s.kebabize,
+          app_name:         (options[:app_name] || js_var_name),
+          file_name:        file_name,
+          template_engine:  template_engine,
+          #components:       (components.keys.map{|k| k.to_s.camelize}.join(', ') if register_local),
+          components:       components.map{|c| c.js_var_name}.join(', '),
+          vue_data_json:    data.to_json
+        }
+        
+        # {block_content:rendered_block, vue_sfc:{name:name, vue_template:template, vue_script:script}}
+        rendered_root_sfc_js = \
+          #render_sfc_file(file_name:file_name.to_sym, template_engine:template_engine, locals:locals).to_a[1] ||
+          parsed_script || 
+          Vue::Helpers.root_object_js.interpolate(**locals)
+        
+        vue_output << rendered_root_sfc_js
+        
+        # if minify
+        #   #extra_spaces_removed = vue_output.gsub(/(^\s+)|(\s+)|(\s+$)/){|m| {$1 => "\\\n", $2 => ' ', $3 => "\\\n"}[m]}
+        #   Uglifier.compile(vue_output, harmony:true).gsub(/\s{2,}/, ' ')
+        # else
+        #   vue_output
+        # end
+        #vue_output << "; App = VueApp;"
+      end  # compile_vue_output
+      
+    end  # VueRoot
+    
+    
+    class VueComponent < VueObject
+      def type; 'component'; end
+    end
+      
     
   end # Helpers
 end # Vue

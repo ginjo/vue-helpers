@@ -65,7 +65,7 @@ module Vue
       # Stores all root apps defined by vue-helpers, plus their compiled components.
       def vue_root(root_name = Vue::Helpers.root_name)
         @vue_root ||= {}
-        @vue_root[root_name] ||= VueObject.new(root_name)
+        @vue_root[root_name] ||= VueRoot.new(root_name)
       end
   
       # Inserts Vue component-call block in html template.
@@ -73,43 +73,43 @@ module Vue
       def vue_component(name,
           root_name:Vue::Helpers.root_name,
           attributes:{},
-          tag:nil,
+          tag_name:nil,
           file_name:name,
-          locals:{},
+          locals:{},  # may be useless
           template_engine:current_template_engine,
           &block
         )
         
-        component_content_ary = render_sfc_file(file_name:file_name, locals:locals, template_engine:template_engine)
+        # Now handled in VueObject.
+        #component_content_ary = render_sfc_file(file_name:file_name, locals:locals, template_engine:template_engine)
         
-        block_content = capture_html(root_name:root_name, **locals, &block) if block_given?
+        # Should be handled by VueObject
+        #block_content = capture_html(root_name:root_name, **locals, &block) if block_given?
         
-        # Build this later, when processign the vue root.
-        #compiled_component_js = compile_component_js(name, *component_content_ary)
+        # # Build this later, when processign the vue root.
+        # compiled_component_js = compile_component_js(name, *component_content_ary)
         
-        vue_root(root_name).components[name] = {name:name, vue_template:component_content_ary[0], vue_script:component_content_ary[1]}
+        # # See new way below.
+        # vue_root(root_name).components[name] = {name:name, vue_template:component_content_ary[0], vue_script:component_content_ary[1]}
  
-        # # Proposed new way:
-        # vue_root(root_name).add_component(name,
-        #   root_name:root_name,
-        #   file_name:name,
-        #   attributes:attributes,
-        #   tag:tag,
-        #   locals:locals,
-        #   template_engine:template_engine,
-        #   context:block        
+        # # See new way below.
+        # component_output = compile_component_html_block(
+        #   name: name,
+        #   tag_name: tag_name,
+        #   attributes: attributes,
+        #   block_content: block_content,
+        #   locals:locals
         # )
-        #
-        # Then we can do this:
-        #   component_output = vue_root(root_name)[name].html_call_block
-        
-        component_output = compile_component_html_block(
-          name: name,
-          tag: tag,
-          attributes: attributes,
-          block_content: block_content,
-          locals:locals
+
+
+        component = vue_root(root_name).component(name,
+          root_name:root_name,
+          file_name:file_name,
+          template_engine:template_engine,
+          context:self        
         )
+        
+        component_output = component.render(tag_name, locals:locals, attributes:attributes, &block)
         
         if block_given?
           #puts "Vue_component concating content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"
@@ -121,10 +121,12 @@ module Vue
         end
       end  # vue_component()
     
+    
       # Outputs html script block of entire collection of vue roots and components.
       # TODO: Should this use x-templates?
       def vue_app_inline(root_name = Vue::Helpers.root_name, **options)
-        return unless compiled = compile_vue_output(root_name, **options)
+        #return unless compiled = compile_vue_output(root_name, **options)
+        return unless compiled = vue_root(root_name).compile_output_js(**options)
         interpolated_wrapper = Vue::Helpers.inline_script_html.interpolate(compiled: compiled)
       end
   
@@ -132,7 +134,8 @@ module Vue
       # Note that x-templates will not work with external-resource scheme,
       # so this will always use template literals (backticks).
       def vue_app_external(root_name = Vue::Helpers.root_name, **options)
-        return unless compiled = compile_vue_output(root_name, **options)
+        #return unless compiled = compile_vue_output(root_name, **options)
+        return unless compiled = vue_root(root_name).compile_output_js(**options)
         key = secure_key
         callback_prefix = Vue::Helpers.callback_prefix
         Vue::Helpers.cache_store[key] = compiled
@@ -141,6 +144,9 @@ module Vue
       
       def vue_app(root_name = Vue::Helpers.root_name, external_resource:Vue::Helpers.external_resource, **options, &block)
         #puts "VUE_ROOT self: #{self}, methods: #{methods.sort.to_yaml}"
+        
+        root_app = vue_root(root_name).initialize_options(root_name:root_name, context:self, **options)
+        
         block_result = capture_html(root_name:root_name, **options, &block) if block_given?
         
         root_script_output = case external_resource
@@ -148,12 +154,7 @@ module Vue
         when String; vue_app_external(root_name, **options)
         else vue_app_inline(root_name, **options)
         end
-        
-        # # Proposed new way:
-        # @root_app_object.render(<options>)
-        
-        puts @vue_root.to_yaml
-        
+                
         if block_result
           concat_content(Vue::Helpers.root_app_html.interpolate(
             # locals
@@ -165,6 +166,7 @@ module Vue
           root_script_output
         end
       end
+
       
     end # Methods
   end # Helpers

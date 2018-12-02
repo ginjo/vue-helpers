@@ -51,23 +51,23 @@ module Vue
         #   [template, script]
         # end
         
-        # # TODO: Do we need this: 'ERB::Util.html_escape string'. It will convert all html tags like this: "Hi I&#39;m some text. 2 &lt; 3".
-        # def render_ruby_template(template_text_or_file, locals:{}, template_engine:current_template_engine)
-        #   #puts "RENDER_ruby_template(\"#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}\", locals:<locals>, template_engine:#{template_engine})"
-        #     
-        #   tilt_template = begin
-        #     case template_text_or_file
-        #     when Symbol; Tilt.new(template_path(template_text_or_file, template_engine:template_engine), 1, outvar: Vue::Helpers.vue_outvar)
-        #     when String; Tilt.template_for(template_engine).new(nil, 1, outvar: Vue::Helpers.vue_outvar){template_text_or_file}
-        #     end
-        #   rescue
-        #     # TODO: Make this a logger.debug output.
-        #     #puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
-        #     nil
-        #   end
-        # 
-        #   tilt_template.render(self, **locals) if tilt_template.is_a?(Tilt::Template)
-        # end
+        # TODO: Do we need this: 'ERB::Util.html_escape string'. It will convert all html tags like this: "Hi I&#39;m some text. 2 &lt; 3".
+        def render_ruby_template(template_text_or_file, locals:{}, template_engine:current_template_engine)
+          #puts "RENDER_ruby_template(\"#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}\", locals:<locals>, template_engine:#{template_engine})"
+            
+          tilt_template = begin
+            case template_text_or_file
+            when Symbol; Tilt.new(template_path(template_text_or_file, template_engine:template_engine), 1, outvar: Vue::Helpers.vue_outvar)
+            when String; Tilt.template_for(template_engine).new(nil, 1, outvar: Vue::Helpers.vue_outvar){template_text_or_file}
+            end
+          rescue
+            # TODO: Make this a logger.debug output.
+            #puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
+            nil
+          end
+        
+          tilt_template.render(self, **locals) if tilt_template.is_a?(Tilt::Template)
+        end
         
         # def compile_component_html_block(name:nil, tag:nil, attributes:{}, block_content:'', locals:{})
         #   
@@ -181,7 +181,8 @@ module Vue
           instance_variable_set(buffer_name, '')
         end
         
-        # TODO: Find out how, if possible, to pass root_name (and other options?) on to sub-modules inside block.
+        # TODO: Probbably need to pass root_name (and other options?) on to sub-components inside block.
+        # Does vue even allow components in the block of a component call?
         def capture_html(*args, root_name:Vue::Helpers.root_name, buffer_name:nil, **locals, &block)
           #puts "CAPTURE_HTML self: #{self}, methods: #{methods.sort.to_yaml}"
           return unless block_given?
