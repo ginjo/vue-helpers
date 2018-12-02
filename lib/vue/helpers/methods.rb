@@ -114,7 +114,7 @@ module Vue
           root_name:root_name,
           file_name:file_name,
           template_engine:template_engine,
-          context:self        
+          #context:self        
         )
         puts "Methods#vue_component retrieved component: #{component}"
         
@@ -155,7 +155,8 @@ module Vue
         #puts "VUE_ROOT self: #{self}, methods: #{methods.sort.to_yaml}"
         
         #root_app = vue_root(root_name).initialize_options(root_name:root_name, context:self, **options)
-        root_app = vue_root(root_name, context:self, **options)
+        #root_app = vue_root(root_name, context:self, **options)
+        root_app = vue_root(root_name, **options)
         
         block_result = capture_html(root_name:root_name, **options, &block) if block_given?
         

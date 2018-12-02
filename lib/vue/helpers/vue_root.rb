@@ -147,43 +147,6 @@ module Vue
 
 
       ### Called from user-space by vue_root, vue_app, vue_compoenent.
-        
-      # Renders the html block to replace ruby view-template tags.
-      # NOTE: Locals may be useless here.
-      # TODO: Should this be in the VueComponent class?
-      # Used to be 'to_html_block'
-      def render(tag_name=nil, locals:{}, attributes:{}, &block)
-        # Adds 'is' attribute to html vue-component element,
-        # if the user specifies an alternate 'tag_name' (default tag_name is name-of-component).
-        if tag_name
-          attributes['is'] = name
-        end
-        
-        wrapper(:component_call_html, locals:locals,
-          name:name,
-          tag_name:tag_name,
-          el_name:(tag_name || name).to_s.kebabize,
-          block_content:(context.capture_html(root_name:root_name, **locals, &block) if block_given?),
-          attributes_string:attributes.to_html_attributes
-        )
-      end
-  
-      # Builds js output string.
-      def to_component_js(register_local:false, template_literal:true)
-          template_spec = template_literal ? "\`#{parsed_template.to_s.escape_backticks}\`" : "'##{name}-template'"
-          js_output = register_local \
-            ? 'var #{name} = {template: #{template_spec}, \2'
-            : 'var #{name} = Vue.component("#{name}", {template: #{template_spec}, \2)'  # ) << ")"
-          
-          # TODO: Make escaping backticks optional, as they could break user templates with nested backtick blocks, like ${``}.
-          parsed_script.gsub(/export\s+default\s*(\{|Vue.component\s*\([^\{]*\{)(.*$)/m,
-            js_output)
-            .interpolate(name: name.to_s.camelize, template_spec: template_spec)
-      end
-      
-      
-      def to_x_template
-      end
       
       def vue_object_list
         #context.instance_variable_get(:@vue_root) || context.instance_variable_set(:@vue_root, {})
@@ -230,9 +193,7 @@ module Vue
           # # Block may not be needed here, it's handled in 'vue_app'.
           # &block
         )
-        
-        puts "I am component '#{name}' and my @context is '#{@context}'"        
-        
+                
         vue_output = "console.log('placeholder vue output');\n"
         
         components = vue_object_list.collect(){|k,v| v if v.type == 'component' && v.root_name == name}.compact
@@ -281,6 +242,43 @@ module Vue
     
     class VueComponent < VueObject
       def type; 'component'; end
+      
+      # Renders the html block to replace ruby view-template tags.
+      # NOTE: Locals may be useless here.
+      # TODO: Should this be in the VueComponent class?
+      # Used to be 'to_html_block'
+      def render(tag_name=nil, locals:{}, attributes:{}, &block)
+        # Adds 'is' attribute to html vue-component element,
+        # if the user specifies an alternate 'tag_name' (default tag_name is name-of-component).
+        if tag_name
+          attributes['is'] = name
+        end
+        
+        wrapper(:component_call_html, locals:locals,
+          name:name,
+          tag_name:tag_name,
+          el_name:(tag_name || name).to_s.kebabize,
+          block_content:(context.capture_html(root_name:root_name, **locals, &block) if block_given?),
+          attributes_string:attributes.to_html_attributes
+        )
+      end
+  
+      # Builds js output string.
+      def to_component_js(register_local:false, template_literal:true)
+          template_spec = template_literal ? "\`#{parsed_template.to_s.escape_backticks}\`" : "'##{name}-template'"
+          js_output = register_local \
+            ? 'var #{name} = {template: #{template_spec}, \2'
+            : 'var #{name} = Vue.component("#{name}", {template: #{template_spec}, \2)'  # ) << ")"
+          
+          # TODO: Make escaping backticks optional, as they could break user templates with nested backtick blocks, like ${``}.
+          parsed_script.gsub(/export\s+default\s*(\{|Vue.component\s*\([^\{]*\{)(.*$)/m,
+            js_output)
+            .interpolate(name: name.to_s.camelize, template_spec: template_spec)
+      end
+      
+      
+      def to_x_template
+      end
     end
       
     
