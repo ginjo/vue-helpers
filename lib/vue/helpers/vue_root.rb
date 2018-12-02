@@ -9,13 +9,37 @@ module Vue
     using CoreRefinements
     using HelperRefinements
   
-    # Instance represents a single vue root app and all of its components.
-    class RootApp
-      attr_accessor :components, :data
-  
-      def initialize(*args, **opts)
-        @components = opts[:components] || {}
-        @data       = opts[:data] || {}
+    # # Instance represents a single vue root app and all of its components.
+    # class RootApp
+    #   attr_accessor :components, :data
+    # 
+    #   def initialize(*args, **opts)
+    #     @components = opts[:components] || {}
+    #     @data       = opts[:data] || {}
+    #   end
+    # end
+    
+    # Always use the repository interface for vue-object crud operations.
+    class VueRepository < Hash
+      attr_reader :context
+      
+      def initialize(context)
+        @context = context
+      end
+    
+      def get_or_create(klas, name, **options)
+        obj = fetch(name){|n| self[name] = klas.new(name, **options.merge({repo:self}))}
+        obj.repo ||= self
+        obj.initialize_options(**options) unless obj.initialized
+        obj
+      end
+      
+      def root(*args)
+        get_or_create(VueRoot, *args)
+      end
+      
+      def component(*args)
+        get_or_create(VueComponent, *args)
       end
     end
     
@@ -46,7 +70,7 @@ module Vue
         root_name:        nil,
         file_name:        nil,
         template_engine:  nil,
-        context:          nil,
+        #context:          nil,
         
         # Vue-specific options for browser processing.
         # TODO: We can accept :data, :components, and other vue-spepcific options,
@@ -55,29 +79,31 @@ module Vue
         data:             {},
         components:       [],
         watch:            {},
-        
-        # Can't store rendered block, since it will be different with each component call.
-        #rendered_block:   nil,
-        
+                
         # These I think we can still store, since they shouldn't change throughout a single request.
         rendered_dot_vue: nil,
         parsed_template:  nil,
         parsed_script:    nil,
+        
+        # Utility
+        repo:             nil
       }
       
       attr_accessor *DEFAULTS.keys
+      attr_reader   :initialized
       
       
-      ## Internal methods
+      ### Internal methods
       
       def initialize(name, **options)
         @name = name
         Debug[name] = self
         #puts "VueObject created: #{name}, self: #{self}"
-        initialize_options(**options) if options.size > 0
+        initialize_options(**options)
       end
       
       def initialize_options(**options)
+        return self unless options.size > 0 && !@initialized
         # This is experimental, just to see if this works here away from the controller instance.
         #@template_engine = Tilt.current_template
 
@@ -89,10 +115,12 @@ module Vue
         # TODO: Do this (handle dynamic defaults) for other parameters too, like file_name, app_name, etc.
         if context
           @template_engine ||= context.current_template_engine
-          vue_object_list[name] = self
+          #vue_object_list[name] = self
         end
         
         load_dot_vue if file_name
+        
+        @initialized = true
         puts "VueObject initialized options: #{name}, self: #{self}"
         self
       end
@@ -112,9 +140,13 @@ module Vue
         #{vue_template:template, vue_script:script}
         #[template, script]
       end
+      
+      def context
+        repo.context
+      end
 
 
-      ## Called from user-space by vue_root, vue_app, vue_compoenent.
+      ### Called from user-space by vue_root, vue_app, vue_compoenent.
         
       # Renders the html block to replace ruby view-template tags.
       # NOTE: Locals may be useless here.
@@ -154,12 +186,13 @@ module Vue
       end
       
       def vue_object_list
-        context.instance_variable_get(:@vue_root) || context.instance_variable_set(:@vue_root, {})
+        #context.instance_variable_get(:@vue_root) || context.instance_variable_set(:@vue_root, {})
+        repo
       end
       
-      def vue_root(*args)
-        context.vue_root(*args)
-      end
+      # def vue_root(*args)
+      #   context.vue_root(*args)
+      # end
 
       def wrapper(wrapper_name, locals:{}, **options)
         Vue::Helpers.send(wrapper_name).interpolate(**options.merge(locals))
@@ -181,7 +214,10 @@ module Vue
       
       # TODO: This needs to be just '.component', since it could 'add' or 'get-if-exists'.
       def component(_name, **options)
-        new_c = VueComponent.new(_name, **options.merge({root_name:(name || root_name)}))
+        #cmp = VueComponent.new(_name, **options.merge({root_name:(name || root_name)}))
+        cmp = repo.component(_name, **options.merge({root_name:(name || root_name)}))
+        puts "VueRoot#component retrieved component: #{cmp}"
+        cmp
       end
       
       def compile_output_js( **options  # generic opts placeholder until we get the args/opts flow worked out.
@@ -214,7 +250,7 @@ module Vue
         end
         
         locals = {
-          root_name:        root_name.to_s.kebabize,
+          root_name:        name.to_s.kebabize,
           app_name:         (options[:app_name] || js_var_name),
           file_name:        file_name,
           template_engine:  template_engine,

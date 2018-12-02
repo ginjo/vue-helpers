@@ -61,12 +61,20 @@ module Vue
       def self.included(other)
         other.send(:prepend, ControllerPrepend)
       end
-      
-      # Stores all root apps defined by vue-helpers, plus their compiled components.
-      def vue_root(root_name = Vue::Helpers.root_name)
-        @vue_root ||= {}
-        @vue_root[root_name] ||= VueRoot.new(root_name)
+
+            
+      def vue_repository
+        @vue_repository ||= VueRepository.new(context=self)
+        puts "Getting vue_repository #{@vue_repository.class} with keys: #{@vue_repository.keys}"
+        @vue_repository
       end
+      
+      def vue_root(root_name = Vue::Helpers.root_name, **options)
+        # @vue_root ||= {}
+        # @vue_root[root_name] ||= VueRoot.new(root_name)
+        vue_repository.root(root_name, **options)
+      end
+
   
       # Inserts Vue component-call block in html template.
       # Name & file_name refer to file-name.vue.<template_engine> SFC file. Example: products.vue.erb.
@@ -108,6 +116,7 @@ module Vue
           template_engine:template_engine,
           context:self        
         )
+        puts "Methods#vue_component retrieved component: #{component}"
         
         component_output = component.render(tag_name, locals:locals, attributes:attributes, &block)
         
@@ -145,7 +154,8 @@ module Vue
       def vue_app(root_name = Vue::Helpers.root_name, external_resource:Vue::Helpers.external_resource, **options, &block)
         #puts "VUE_ROOT self: #{self}, methods: #{methods.sort.to_yaml}"
         
-        root_app = vue_root(root_name).initialize_options(root_name:root_name, context:self, **options)
+        #root_app = vue_root(root_name).initialize_options(root_name:root_name, context:self, **options)
+        root_app = vue_root(root_name, context:self, **options)
         
         block_result = capture_html(root_name:root_name, **options, &block) if block_given?
         
