@@ -1,21 +1,19 @@
-# VueHelpers
+# Vue::Helpers
 
-The vue-helpers gem provides *helper* methods for writing front-end code with Vuejs in your Ruby backend application... All without any back-end Javascript engine.
-
-Vuejs is a Javascript framework that dynamically binds html elements to data structures. It's a powerful tool for building responsive front-end applications, and it pairs well with Ruby.
+Vue-helpers is a Ruby gem that provides *view helper* methods for integrating the Vuejs Javascript library with your Ruby applications, without the need for any backend Javascript processing.
 
 A common way to bridge the front-end Vuejs and the back-end Ruby is to use a complicated set of server-side Javascript tools. If you're developing an extensive Javascript application that relies on both front-and-back-end Javascript, that might be the best way to go. But if you're developing a Ruby application and want to keep your Javascript strictly on the front-end, vue-helpers might be what you're looking for. 
 
 Some highlights of the gem are:
 
+* Parses single-file-component.vue files.
 * Handles the boilerplate code when writing Vuejs component and root definitions.
 * Packages and sends all vue-related code to client.
-* Parses single-file-component.vue files.
 * Allows composing Vuejs components with your favorite Ruby templating system.
 * Allows multiple Vue root apps.
 * Allows customization/replacement of all boilerplate code.
 * Allows passing variables and data to the Vue root and component objects.
-* No backend Javascript engine needed. The only absolute dependency is Tilt.
+* No backend Javascript engine required. The only absolute dependency is Tilt.
 
 
 ## Installation
@@ -34,8 +32,26 @@ Or install it yourself as:
 
     $ gem install vue-helpers
     
+#### Optional Requirements
+
+If you want to serve the Vue's javascript to your clients using external script resources,
+Add ```rack``` to your Gemfile.
+
+If you want to use the ```:minify``` option to compress the javascript returned to the browser,
+Add the ```uglifier``` gem to your Gemfile.
+Uglifier requires a Javascript runtime, so you will want to add nodejs or equivalent to
+the installed packages of your server OS.
+    
 
 ## Simple Example
+
+views/foo.erb
+```erb  
+  <h2>My Page of Interesting Info</h2>
+  <% vue_component 'my-component', message:'Hello World!' %>
+    <p>Some fabulous information</p>
+  <% end %>
+```
 
 views/my-component.vue.erb
 ```erb  
@@ -52,16 +68,7 @@ views/my-component.vue.erb
     }
   </script>
   
-  <!-- Scoped styles are not supported by the vue-helpers gem. -->
-```
-
-views/foo.erb
-```erb  
-  <h2>My Page of Interesting Info</h2>
-  <% vue_component 'my-component', message:'Hello World!' %>
-    <p>Some fabulous information</p>
-  <% end %>
-  <div>Some more stuff here</div>
+  <!-- Scoped styles are a feature of the Vue Loader (backend JS tool) and are not supported the vue-helpers gem. -->
 ```
 
 vues/layout.erb
@@ -86,7 +93,6 @@ Result sent to the browser
       <my-component message="Hellow World!">
         <p>Some fabulous information</p>
       </my-component>    
-      <div>Some more stuff here</div>
     </div>
   
     <script>
@@ -119,11 +125,10 @@ After Vuejs parses the script body
         <p>This is a Vuejs single-file-component Hello World!</p>
         <p>Some fabulous information</p>
       </div>
-      <div>Some more stuff here</div>
     </div>
 
     <script>
-      //...
+      ...
     </script>
   </body></html>  
 ```
@@ -131,12 +136,14 @@ After Vuejs parses the script body
 
 ## Usage
 
-There are only two methods in vue-helpers that you need to know.
+There are only three methods in vue-helpers that you need to know.
 
 ```ruby
   vue_component(component-name, <optional-root-name>, <options>, &block)
 
-  vue_app(root-app-name, <options>, &block)  
+  vue_app(root-app-name, <options>, &block)
+    
+  vue_root(name)
 ```
 
 These methods parse your .vue files, insert Vue tags in your ruby template, and package all the boilerplate and compiled js code for delivery to the client. You don't need to worry about where to inline your components, where to put the Vue root-app, or how to configure Webpack or Vue loader.
@@ -144,11 +151,40 @@ These methods parse your .vue files, insert Vue tags in your ruby template, and 
 Let look at these methods in more detail.
 
 #### vue_component()
-  Inserts...
+  Inserts/wraps block with vue component tags...
   
 #### vue_app()
-  Inserts...
+  Inserts/wraps block with vue root-app tags...
+  
+#### vue_root()
+  Access the Ruby object model representing your vue app...
 
+## Configuration and Options
+
+### Defaults
+
+```ruby
+  @defaults = {
+    cache_store:             {},
+    callback_prefix:         '/vuecallback',
+    default_outvar:          '@_erbout',
+    external_resource:       false,
+    minify:                  false,
+    register_local:          false,
+    root_name:               'vue-app',
+    template_engine:         :erb,
+    template_literal:        true,
+    views_path:              'app/views',
+    vue_outvar:              '@_vue_outvar',
+
+    component_call_html:     '<#{el_name} #{attributes_string}>#{block_content}</#{el_name}>',
+    external_resource_html:  '<script src="#{callback_prefix}/#{key}"></script>',
+    inline_script_html:      '<script>#{compiled}</script>',
+    root_app_html:           '<div id="#{root_name}">#{block_result}</div>#{root_script_output}',
+    root_object_js:          'var #{app_name} = new Vue({el: ("##{root_name}"), components: {#{components}}, data: #{vue_data_json}})',
+    x_template_html:         '<script type="text/x-template" id="#{name}-template">#{template}</script>',
+  }
+```
 
 ## More Examples
 
@@ -208,64 +244,6 @@ Here's an example Rack app using vue-helpers to define and package a Vuejs front
       }
     }
   </script>
-```
-
-What gets sent back to the browser?
-
-```html
-  <!DOCTYPE html>
-  <head>
-    <meta charset="utf-8">
-    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-  </head>
-  <body>
-    <h2>VueHelpers running on a simple Rack app</h2>
-    <div id="vue-app">
-    
-      <example color="red" >
-            This is componenet block passed to slot {{ exclamation }}.
-      </example>
-    
-    </div>
-    <script>
-      Vue.component('example_sfc', {template: `
-      <div class='main-content'>
-      <h3>{{ poweredBy }}</h3>
-      <p @click='this.alert(color)'>
-      If this template works, you should see some text passed from the component call
-      inserted into in a &lt;pre&gt; block using slots:
-      <pre><slot></slot></pre>
-      </p>
-      <p>
-      Meanwhile, here is some ruby data, converted to json, inserted as a vue component<br>
-      data variable, and parsed with vue into an unordered list.
-      </p>
-      <ul v-for='entry in entries'>
-      <li>{{ entry['description'] }}</li>
-      </ul>
-      </div>
-      `,
-          props: ['color'],
-          data: () => ({
-            poweredBy: 'Powered by Ruby!',
-            entries: [{"id":1,"description":"entry one"},{"id":2,"description":"entry two"},{"id":3,"description":"item three"}]
-          }),
-        }
-      );
-
-        // The locals come from VueHelpers 'compile_vue_output' or 'compile_root_output'.
-        console.log("Here I am!")
-        var VueApp = new Vue({
-          el: (Vue.root_el || '#vue-app'),
-          // Uses js 'spread' syntax, like ruby merge (or maybe splat).
-          data: {
-            ...{navBarIsActive: false},
-            ...{}
-          }
-        })
-      ; App = VueApp;    
-    </script>
-  </body>
 ```
 
 ## Development
