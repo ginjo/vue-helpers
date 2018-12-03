@@ -31,6 +31,7 @@ module Vue
         template_engine
         views_path
         vue_outvar
+        x_template_html
       )
     end
     
@@ -50,6 +51,7 @@ module Vue
     self.inline_script_html = '<script>#{compiled}</script>'
     self.root_app_html = '<div id="#{root_name}">#{block_result}</div>#{root_script_output}'
     self.root_object_js = 'var #{app_name} = new Vue({el: ("##{root_name}"), components: {#{components}}, data: #{vue_data_json}})'
+    self.x_template_html = '<script type="text/x-template" id="#{name}-template">#{template}</script>'
 
   
     # Include this module in your controller (or action, or routes, or whatever).
@@ -140,6 +142,9 @@ module Vue
         when String; vue_app_external(root_name, **options)
         else vue_app_inline(root_name, **options)
         end
+        
+        x_templates = vue_root.components.inject(''){|s,c| s << c.to_x_template; s}
+        root_script_output =  x_templates.to_s + root_script_output
                 
         if block_result
           concat_content(Vue::Helpers.root_app_html.interpolate(

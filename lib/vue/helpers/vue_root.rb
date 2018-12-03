@@ -144,8 +144,10 @@ module Vue
         repo.context
       end
 
+
       ### Called from user-space by vue_root, vue_app, vue_compoenent.
 
+      # Gets a defined wrapper, and interpolates it with the given locals & options.
       def wrapper(wrapper_name, locals:{}, **options)
         Vue::Helpers.send(wrapper_name).interpolate(**options.merge(locals))
       end
@@ -188,8 +190,8 @@ module Vue
       def to_component_js(register_local:false, template_literal:true)
           template_spec = template_literal ? "\`#{parsed_template.to_s.escape_backticks}\`" : "'##{name}-template'"
           js_output = register_local \
-            ? 'var #{name} = {template: #{template_spec}, \2'
-            : 'var #{name} = Vue.component("#{name}", {template: #{template_spec}, \2)'  # ) << ")"
+            ? 'var #{name} = {template: #{template_spec}, \2;'
+            : 'var #{name} = Vue.component("#{name}", {template: #{template_spec}, \2);'  # ) << ")"
           
           # TODO: Make escaping backticks optional, as they could break user templates with nested backtick blocks, like ${``}.
           parsed_script.gsub( 
@@ -200,6 +202,7 @@ module Vue
       
       
       def to_x_template
+        wrapper(:x_template_html, name:name, template:parsed_template)
       end
     end
     
@@ -207,20 +210,29 @@ module Vue
     class VueRoot < VueObject
       def type; 'root'; end
       
-      def components
-        repo.select{|k,v| v.type == 'component' && v.root_name == name}.values
-      end
-      
       # Creates or gets a related component
       def component(_name, **options)
         repo.component(_name, **options.merge({root_name:(name || root_name)}))
       end
       
+      def components
+        repo.select{|k,v| v.type == 'component' && v.root_name == name}.values
+      end
+      
+      # JS string of all component object definitions
+      def components_js
+        components.map{|c| c.to_component_js}.join("\n")
+      end
+      
+      def components_x_template
+        components.map{|c| c.to_component_js}.join("\n\n")
+      end      
+      
       # Compiles js output for entire vue-app for this root object.
       def compile_app_js( **options  # generic opts placeholder until we get the args/opts flow worked out.
           # root_name = Vue::Helpers.root_name,
           # file_name:root_name,
-          # app_name:root_name.camelize,
+          # app_name:root_name.camelize, # Maybe obsolete, see js_var_name
           # #template_engine:context.current_template_engine,
           # register_local: Vue::Helpers.register_local,
           # minify: Vue::Helpers.minify,
@@ -228,21 +240,18 @@ module Vue
           # &block
         )
                 
-        vue_output = "console.log('placeholder vue output');\n"
+        #app_js = ''
         
         #components = vue_object_list.collect(){|k,v| v if v.type == 'component' && v.root_name == name}.compact
         
-        if components.size > 0
-          #vue_output << values.join(";\n")
-          components.each do |cmp|
-            #vue_output << compile_component_js(**cmp_hash, register_local:register_local)
-            vue_output << cmp.to_component_js
-            vue_output << ";\n"
-          end            
-          #vue_output << ";\n"
-        else
-          return
-        end
+        # if components.size > 0
+        #   components.each do |cmp|
+        #     app_js << cmp.to_component_js
+        #     app_js << ";\n"
+        #   end            
+        # else
+        #   return
+        # end
         
         locals = {
           root_name:        name.to_s.kebabize,
@@ -255,21 +264,25 @@ module Vue
         }
         
         # {block_content:rendered_block, vue_sfc:{name:name, vue_template:template, vue_script:script}}
-        rendered_root_sfc_js = \
+        #rendered_root_sfc_js = \
+        #app_js << (
+        components_js << "\n" << (
           #render_sfc_file(file_name:file_name.to_sym, template_engine:template_engine, locals:locals).to_a[1] ||
-          parsed_script || 
-          Vue::Helpers.root_object_js.interpolate(**locals)
+          parsed_script ||
+          wrapper(:root_object_js, locals:locals, **options)
+          #Vue::Helpers.root_object_js.interpolate(**locals)
+        )
         
-        vue_output << rendered_root_sfc_js
+        #app_js << rendered_root_sfc_js
         
         # if minify
-        #   #extra_spaces_removed = vue_output.gsub(/(^\s+)|(\s+)|(\s+$)/){|m| {$1 => "\\\n", $2 => ' ', $3 => "\\\n"}[m]}
-        #   Uglifier.compile(vue_output, harmony:true).gsub(/\s{2,}/, ' ')
+        #   #extra_spaces_removed = app_js.gsub(/(^\s+)|(\s+)|(\s+$)/){|m| {$1 => "\\\n", $2 => ' ', $3 => "\\\n"}[m]}
+        #   Uglifier.compile(app_js, harmony:true).gsub(/\s{2,}/, ' ')
         # else
-        #   vue_output
+        #   app_js
         # end
-        #vue_output << "; App = VueApp;"
-      end  # compile_vue_output
+        #app_js << "; App = VueApp;"
+      end  # compile_app_js
       
     end  # VueRoot
   end # Helpers
