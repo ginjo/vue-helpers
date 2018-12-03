@@ -37,6 +37,7 @@ module Vue
       def root(*args)
         get_or_create(VueRoot, *args)
       end
+      alias_method :[], :root
       
       def component(*args)
         get_or_create(VueComponent, *args)
@@ -77,7 +78,7 @@ module Vue
         # but multiple calls will only respect the last (or first?) one.
         # ... Unless we create a fancy method to merge vue-component options.
         data:             {},
-        components:       [],
+        #components:       [], I don't think we need this here, it's covered by a method.
         watch:            {},
                 
         # These I think we can still store, since they shouldn't change throughout a single request.
@@ -121,7 +122,7 @@ module Vue
         load_dot_vue if file_name
         
         @initialized = true
-        puts "VueObject initialized options: #{name}, self: #{self}"
+        #puts "VueObject initialized options: #{name}, self: #{self}"
         self
       end
 
@@ -133,29 +134,17 @@ module Vue
       end
       
       # Parses a rendered sfc file.
-      # Returns [template-as-html, script-as-js].
+      # Returns [nil, template-as-html, nil, script-as-js].
       # Must be HTML (already rendered from ruby template).
       def parse_vue_sfc(template_text=rendered_dot_vue)
         a,self.parsed_template,c,self.parsed_script = template_text.to_s.match(/(.*<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
-        #{vue_template:template, vue_script:script}
-        #[template, script]
       end
       
       def context
         repo.context
       end
 
-
       ### Called from user-space by vue_root, vue_app, vue_compoenent.
-      
-      def vue_object_list
-        #context.instance_variable_get(:@vue_root) || context.instance_variable_set(:@vue_root, {})
-        repo
-      end
-      
-      # def vue_root(*args)
-      #   context.vue_root(*args)
-      # end
 
       def wrapper(wrapper_name, locals:{}, **options)
         Vue::Helpers.send(wrapper_name).interpolate(**options.merge(locals))
@@ -170,20 +159,65 @@ module Vue
       end
     
     end # VueObject
+
+
+    class VueComponent < VueObject
+      def type; 'component'; end
+      
+      # Renders the html block to replace ruby view-template tags.
+      # NOTE: Locals may be useless here.
+      # TODO: Should this be in the VueComponent class?
+      # Used to be 'to_html_block'
+      def render(tag_name=nil, locals:{}, attributes:{}, &block)
+        # Adds 'is' attribute to html vue-component element,
+        # if the user specifies an alternate 'tag_name' (default tag_name is name-of-component).
+        if tag_name
+          attributes['is'] = name
+        end
+        
+        wrapper(:component_call_html, locals:locals,
+          name:name,
+          tag_name:tag_name,
+          el_name:(tag_name || name).to_s.kebabize,
+          block_content:(context.capture_html(root_name:root_name, **locals, &block) if block_given?),
+          attributes_string:attributes.to_html_attributes
+        )
+      end
+  
+      # Builds js output string.
+      def to_component_js(register_local:false, template_literal:true)
+          template_spec = template_literal ? "\`#{parsed_template.to_s.escape_backticks}\`" : "'##{name}-template'"
+          js_output = register_local \
+            ? 'var #{name} = {template: #{template_spec}, \2'
+            : 'var #{name} = Vue.component("#{name}", {template: #{template_spec}, \2)'  # ) << ")"
+          
+          # TODO: Make escaping backticks optional, as they could break user templates with nested backtick blocks, like ${``}.
+          parsed_script.gsub( 
+            /export\s+default\s*(\{|Vue.component\s*\([^\{]*\{)(.*$)/m,
+            js_output
+          ).interpolate(name: name.to_s.camelize, template_spec: template_spec)
+      end
+      
+      
+      def to_x_template
+      end
+    end
     
     
     class VueRoot < VueObject
       def type; 'root'; end
       
-      # TODO: This needs to be just '.component', since it could 'add' or 'get-if-exists'.
-      def component(_name, **options)
-        #cmp = VueComponent.new(_name, **options.merge({root_name:(name || root_name)}))
-        cmp = repo.component(_name, **options.merge({root_name:(name || root_name)}))
-        puts "VueRoot#component retrieved component: #{cmp}"
-        cmp
+      def components
+        repo.select{|k,v| v.type == 'component' && v.root_name == name}.values
       end
       
-      def compile_output_js( **options  # generic opts placeholder until we get the args/opts flow worked out.
+      # Creates or gets a related component
+      def component(_name, **options)
+        repo.component(_name, **options.merge({root_name:(name || root_name)}))
+      end
+      
+      # Compiles js output for entire vue-app for this root object.
+      def compile_app_js( **options  # generic opts placeholder until we get the args/opts flow worked out.
           # root_name = Vue::Helpers.root_name,
           # file_name:root_name,
           # app_name:root_name.camelize,
@@ -196,7 +230,7 @@ module Vue
                 
         vue_output = "console.log('placeholder vue output');\n"
         
-        components = vue_object_list.collect(){|k,v| v if v.type == 'component' && v.root_name == name}.compact
+        #components = vue_object_list.collect(){|k,v| v if v.type == 'component' && v.root_name == name}.compact
         
         if components.size > 0
           #vue_output << values.join(";\n")
@@ -238,49 +272,5 @@ module Vue
       end  # compile_vue_output
       
     end  # VueRoot
-    
-    
-    class VueComponent < VueObject
-      def type; 'component'; end
-      
-      # Renders the html block to replace ruby view-template tags.
-      # NOTE: Locals may be useless here.
-      # TODO: Should this be in the VueComponent class?
-      # Used to be 'to_html_block'
-      def render(tag_name=nil, locals:{}, attributes:{}, &block)
-        # Adds 'is' attribute to html vue-component element,
-        # if the user specifies an alternate 'tag_name' (default tag_name is name-of-component).
-        if tag_name
-          attributes['is'] = name
-        end
-        
-        wrapper(:component_call_html, locals:locals,
-          name:name,
-          tag_name:tag_name,
-          el_name:(tag_name || name).to_s.kebabize,
-          block_content:(context.capture_html(root_name:root_name, **locals, &block) if block_given?),
-          attributes_string:attributes.to_html_attributes
-        )
-      end
-  
-      # Builds js output string.
-      def to_component_js(register_local:false, template_literal:true)
-          template_spec = template_literal ? "\`#{parsed_template.to_s.escape_backticks}\`" : "'##{name}-template'"
-          js_output = register_local \
-            ? 'var #{name} = {template: #{template_spec}, \2'
-            : 'var #{name} = Vue.component("#{name}", {template: #{template_spec}, \2)'  # ) << ")"
-          
-          # TODO: Make escaping backticks optional, as they could break user templates with nested backtick blocks, like ${``}.
-          parsed_script.gsub(/export\s+default\s*(\{|Vue.component\s*\([^\{]*\{)(.*$)/m,
-            js_output)
-            .interpolate(name: name.to_s.camelize, template_spec: template_spec)
-      end
-      
-      
-      def to_x_template
-      end
-    end
-      
-    
   end # Helpers
 end # Vue

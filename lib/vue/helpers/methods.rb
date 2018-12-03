@@ -62,10 +62,9 @@ module Vue
         other.send(:prepend, ControllerPrepend)
       end
 
-            
       def vue_repository
         @vue_repository ||= VueRepository.new(context=self)
-        puts "Getting vue_repository #{@vue_repository.class} with keys: #{@vue_repository.keys}"
+        #puts "Getting vue_repository #{@vue_repository.class} with keys: #{@vue_repository.keys}"
         @vue_repository
       end
       
@@ -74,7 +73,6 @@ module Vue
         # @vue_root[root_name] ||= VueRoot.new(root_name)
         vue_repository.root(root_name, **options)
       end
-
   
       # Inserts Vue component-call block in html template.
       # Name & file_name refer to file-name.vue.<template_engine> SFC file. Example: products.vue.erb.
@@ -88,35 +86,12 @@ module Vue
           &block
         )
         
-        # Now handled in VueObject.
-        #component_content_ary = render_sfc_file(file_name:file_name, locals:locals, template_engine:template_engine)
-        
-        # Should be handled by VueObject
-        #block_content = capture_html(root_name:root_name, **locals, &block) if block_given?
-        
-        # # Build this later, when processign the vue root.
-        # compiled_component_js = compile_component_js(name, *component_content_ary)
-        
-        # # See new way below.
-        # vue_root(root_name).components[name] = {name:name, vue_template:component_content_ary[0], vue_script:component_content_ary[1]}
- 
-        # # See new way below.
-        # component_output = compile_component_html_block(
-        #   name: name,
-        #   tag_name: tag_name,
-        #   attributes: attributes,
-        #   block_content: block_content,
-        #   locals:locals
-        # )
-
-
         component = vue_root(root_name).component(name,
           root_name:root_name,
           file_name:file_name,
           template_engine:template_engine,
           #context:self        
         )
-        puts "Methods#vue_component retrieved component: #{component}"
         
         component_output = component.render(tag_name, locals:locals, attributes:attributes, &block)
         
@@ -135,7 +110,7 @@ module Vue
       # TODO: Should this use x-templates?
       def vue_app_inline(root_name = Vue::Helpers.root_name, **options)
         #return unless compiled = compile_vue_output(root_name, **options)
-        return unless compiled = vue_root(root_name).compile_output_js(**options)
+        return unless compiled = vue_root(root_name).compile_app_js(**options)
         interpolated_wrapper = Vue::Helpers.inline_script_html.interpolate(compiled: compiled)
       end
   
@@ -144,7 +119,7 @@ module Vue
       # so this will always use template literals (backticks).
       def vue_app_external(root_name = Vue::Helpers.root_name, **options)
         #return unless compiled = compile_vue_output(root_name, **options)
-        return unless compiled = vue_root(root_name).compile_output_js(**options)
+        return unless compiled = vue_root(root_name).compile_app_js(**options)
         key = secure_key
         callback_prefix = Vue::Helpers.callback_prefix
         Vue::Helpers.cache_store[key] = compiled
