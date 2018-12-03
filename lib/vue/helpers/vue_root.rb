@@ -151,10 +151,6 @@ module Vue
       def wrapper(wrapper_name, locals:{}, **options)
         Vue::Helpers.send(wrapper_name).interpolate(**options.merge(locals))
       end
-          
-      def secure_key
-        SecureRandom.urlsafe_base64(32)
-      end
       
       def js_var_name
         name.camelize
@@ -267,7 +263,7 @@ module Vue
         # {block_content:rendered_block, vue_sfc:{name:name, vue_template:template, vue_script:script}}
         #rendered_root_sfc_js = \
         #app_js << (
-        components_js << "\n" << (
+        components_js(**options) << "\n" << (
           #render_sfc_file(file_name:file_name.to_sym, template_engine:template_engine, locals:locals).to_a[1] ||
           parsed_script ||
           wrapper(:root_object_js, locals:locals, **options)

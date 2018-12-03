@@ -99,6 +99,10 @@ module Vue
             text
           end
         end
+        
+        def secure_key
+          SecureRandom.urlsafe_base64(32)
+        end
       
       end # refine Methods
     end # HelperRefinements

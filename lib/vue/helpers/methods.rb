@@ -11,51 +11,34 @@ module Vue
     using CoreRefinements
     using HelperRefinements
     
-    # TODO: Consider moving all config code to a config module or config file.
-    #
+    @defaults = {
+      cache_store:             {},
+      callback_prefix:         '/vuecallback',
+      default_outvar:          '@_erbout',
+      external_resource:       false,
+      minify:                  false,
+      register_local:          false,
+      root_name:               'vue-app',
+      template_engine:         :erb,
+      template_literal:        true,
+      views_path:              'app/views',
+      vue_outvar:              '@_vue_outvar',
+
+      component_call_html:     '<#{el_name} #{attributes_string}>#{block_content}</#{el_name}>',
+      external_resource_html:  '<script src="#{callback_prefix}/#{key}"></script>',
+      inline_script_html:      '<script>#{compiled}</script>',
+      root_app_html:           '<div id="#{root_name}">#{block_result}</div>#{root_script_output}',
+      root_object_js:          'var #{app_name} = new Vue({el: ("##{root_name}"), components: {#{components}}, data: #{vue_data_json}})',
+      x_template_html:         '<script type="text/x-template" id="#{name}-template">#{template}</script>',
+    }
+    
+    @defaults.keys.each{|k| define_singleton_method(k){@defaults[k]}}
+    
     class << self
-      # Vue::Helpers defaults.
-      attr_accessor *%w(
-        cache_store
-        callback_prefix
-        component_call_html
-        default_outvar
-        external_resource
-        external_resource_html
-        inline_script_html
-        minify
-        register_local
-        root_app_html
-        root_name
-        root_object_js
-        template_engine
-        template_literal
-        views_path
-        vue_outvar
-        x_template_html
-      )
+      attr_accessor :defaults      
     end
     
-    self.cache_store = {}
-    self.callback_prefix = '/vuecallback'
-    self.default_outvar = '@_erbout'
-    self.external_resource_html = false
-    self.minify = false
-    self.register_local = false
-    self.root_name = 'vue-app'
-    self.template_engine = :erb
-    self.template_literal = true
-    self.views_path = 'app/views'
-    self.vue_outvar = '@_vue_outvar'
-    
-    self.component_call_html = '<#{el_name} #{attributes_string}>#{block_content}</#{el_name}>'
-    self.external_resource_html = '<script src="#{callback_prefix}/#{key}"></script>'
-    self.inline_script_html = '<script>#{compiled}</script>'
-    self.root_app_html = '<div id="#{root_name}">#{block_result}</div>#{root_script_output}'
-    self.root_object_js = 'var #{app_name} = new Vue({el: ("##{root_name}"), components: {#{components}}, data: #{vue_data_json}})'
-    self.x_template_html = '<script type="text/x-template" id="#{name}-template">#{template}</script>'
-
-  
+        
     # Include this module in your controller (or action, or routes, or whatever).
     #
     # SEE helper_refinements.rb for the helpers' supporting methods!
@@ -147,7 +130,7 @@ module Vue
         block_result = capture_html(root_name:root_name, **options, &block) if block_given?
         
         root_script_output = case external_resource
-        when true; vue_app_external(root_name, **options)
+        when true; vue_app_external(root_name, **options)  #->r{r==true && !template_literal}
         when String; vue_app_external(root_name, **options)
         else vue_app_inline(root_name, **options)
         end
