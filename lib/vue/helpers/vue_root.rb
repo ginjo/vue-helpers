@@ -153,7 +153,7 @@ module Vue
       end
       
       def js_var_name
-        name.camelize
+        name.to_s.camelize
       end
     
     end # VueObject
