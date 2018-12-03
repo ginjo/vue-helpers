@@ -187,7 +187,8 @@ module Vue
       end
   
       # Builds js output string.
-      def to_component_js(register_local:false, template_literal:true)
+      def to_component_js(register_local:Vue::Helpers.register_local, template_literal:Vue::Helpers.template_literal, **options)
+          # The above **options are not used yet, but need somewhere to catch extra stuff.
           template_spec = template_literal ? "\`#{parsed_template.to_s.escape_backticks}\`" : "'##{name}-template'"
           js_output = register_local \
             ? 'var #{name} = {template: #{template_spec}, \2;'
@@ -201,7 +202,7 @@ module Vue
       end
       
       
-      def to_x_template
+      def get_x_template
         wrapper(:x_template_html, name:name, template:parsed_template)
       end
     end
@@ -220,12 +221,12 @@ module Vue
       end
       
       # JS string of all component object definitions
-      def components_js
-        components.map{|c| c.to_component_js}.join("\n")
+      def components_js(**options)
+        components.map{|c| c.to_component_js(**options)}.join("\n")
       end
       
       def components_x_template
-        components.map{|c| c.to_component_js}.join("\n\n")
+        components.map{|c| c.get_x_template}.join("\n")
       end      
       
       # Compiles js output for entire vue-app for this root object.

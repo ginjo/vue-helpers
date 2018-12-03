@@ -29,6 +29,7 @@ module Vue
         root_name
         root_object_js
         template_engine
+        template_literal
         views_path
         vue_outvar
         x_template_html
@@ -43,6 +44,7 @@ module Vue
     self.register_local = false
     self.root_name = 'vue-app'
     self.template_engine = :erb
+    self.template_literal = true
     self.views_path = 'app/views'
     self.vue_outvar = '@_vue_outvar'
     
@@ -113,6 +115,7 @@ module Vue
       def vue_app_inline(root_name = Vue::Helpers.root_name, **options)
         #return unless compiled = compile_vue_output(root_name, **options)
         return unless compiled = vue_root(root_name).compile_app_js(**options)
+        # TODO: Use 'wrapper' here.
         interpolated_wrapper = Vue::Helpers.inline_script_html.interpolate(compiled: compiled)
       end
   
@@ -122,17 +125,23 @@ module Vue
       def vue_app_external(root_name = Vue::Helpers.root_name, **options)
         #return unless compiled = compile_vue_output(root_name, **options)
         return unless compiled = vue_root(root_name).compile_app_js(**options)
+        
         key = secure_key
         callback_prefix = Vue::Helpers.callback_prefix
         Vue::Helpers.cache_store[key] = compiled
+        # TODO: Use 'wrapper' here
         interpolated_wrapper = Vue::Helpers.external_resource_html.interpolate(callback_prefix: callback_prefix, key: key)
       end
       
-      def vue_app(root_name = Vue::Helpers.root_name, external_resource:Vue::Helpers.external_resource, **options, &block)
-        #puts "VUE_ROOT self: #{self}, methods: #{methods.sort.to_yaml}"
+      def vue_app(root_name = Vue::Helpers.root_name,
+        external_resource: Vue::Helpers.external_resource,
+        template_literal:  Vue::Helpers.template_literal,
+        **options,
+        &block
+        )
         
-        #root_app = vue_root(root_name).initialize_options(root_name:root_name, context:self, **options)
-        #root_app = vue_root(root_name, context:self, **options)
+        options.merge!(template_literal:template_literal)
+                
         root_app = vue_root(root_name, **options)
         
         block_result = capture_html(root_name:root_name, **options, &block) if block_given?
@@ -143,10 +152,12 @@ module Vue
         else vue_app_inline(root_name, **options)
         end
         
-        x_templates = vue_root.components.inject(''){|s,c| s << c.to_x_template; s}
-        root_script_output =  x_templates.to_s + root_script_output
+        #x_templates = vue_root.components.inject(''){|s,c| s << c.get_x_template; s}
+        #x_templates = vue_root.components_x_template
+        root_script_output =  vue_root.components_x_template.to_s + root_script_output unless template_literal
                 
         if block_result
+          # TODO: This should use 'wrapper'.
           concat_content(Vue::Helpers.root_app_html.interpolate(
             # locals
             root_name:root_name,
