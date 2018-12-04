@@ -1,19 +1,25 @@
 # Vue::Helpers
 
-Vue-helpers is a Ruby gem that provides *view helper* methods for integrating the Vuejs Javascript library with your Ruby applications, without the need for any backend Javascript processing.
+Vue-helpers is a Ruby gem that provides *view helper* methods for adding Vuejs functionality to your Ruby applications, without requiring backend Javascript processing. If you're developing a Ruby web application and want to keep your Javascript strictly on the front-end, vue-helpers can assist with the following tasks.
 
-A common way to bridge the front-end Vuejs and the back-end Ruby is to use a complicated set of server-side Javascript tools. If you're developing an extensive Javascript application that relies on both front-and-back-end Javascript, that might be the best way to go. But if you're developing a Ruby application and want to keep your Javascript strictly on the front-end, vue-helpers might be what you're looking for. 
+* Parse single-file-component.vue files.
+* Automate vue component and root boilerplate code.
+* Package and send vue-related code to client.
+* Compose vue components with your favorite ruby templating system.
+* Use multiple vue root apps.
+* Manage global-vs-local component registration.
+* Customize the boilerplate code with your own templates.
+* Pass variables and data to vue root and component js objects.
+* Inline the rendered html/js or serve it as an external script resource.
 
-Some highlights of the gem are:
+Vue-helpers officially supports Rails, Sinatra, and Rack applications using Erb, Haml, and Slim templating. Other frameworks and templating systems are likely compatible out-of-the-box. In most cases, support for additional libraries is easily integrated.
 
-* Parses single-file-component.vue files.
-* Handles the boilerplate code when writing Vuejs component and root definitions.
-* Packages and sends all vue-related code to client.
-* Allows composing Vuejs components with your favorite Ruby templating system.
-* Allows multiple Vue root apps.
-* Allows customization/replacement of all boilerplate code.
-* Allows passing variables and data to the Vue root and component objects.
-* No backend Javascript engine required. The only absolute dependency is Tilt.
+
+## Requirements
+
+* Ruby 2.3 or later. Earlier versions of Ruby may work but are not tested.
+
+* Vuejs 2.0 or greater. Earlier versions of Vuejs may work but are not tested.
 
 
 ## Installation
@@ -35,12 +41,13 @@ Or install it yourself as:
 #### Optional Requirements
 
 If you want to serve the Vue's javascript to your clients using external script resources,
-Add ```rack``` to your Gemfile.
+Make sure ```rack``` is part of your get-set. You only need to consider this if you are not
+using Rails, Sinatra, or any of the other Rack-based frameworks.
 
 If you want to use the ```:minify``` option to compress the javascript returned to the browser,
 Add the ```uglifier``` gem to your Gemfile.
-Uglifier requires a Javascript runtime, so you will want to add nodejs or equivalent to
-the installed packages of your server OS.
+Uglifier requires a Javascript runtime, so you will need to add nodejs or equivalent to
+the installed packages on your server OS.
     
 
 ## Simple Example
@@ -48,11 +55,16 @@ the installed packages of your server OS.
 This example assumes you are using a rack-based framework and ERB templates.
 However, neither Rack nor ERB are required to use the vue-helpers gem.
 
+your-app-helpers.rb
+```ruby
+  include Vue::Helpers
+```
+
 views/foo.erb
 ```erb  
   <h2>My Page of Interesting Info</h2>
   <% vue_component 'my-component', message:'Hello World!' %>
-    <p>Some fabulous information</p>
+    <p>This block is sent to a vue slot</p>
   <% end %>
 ```
 
@@ -77,7 +89,9 @@ views/my-component.vue.erb
 vues/layout.erb
 ```erb  
   <html>
-    <head></head>
+    <head>
+      <script src="path/to/vuejs-2.0.js"></script>
+    </head>
     <body>
       <% vue_app do %>
         <h1>My Vue App</h1>
@@ -87,14 +101,18 @@ vues/layout.erb
   </html>
 ```
 
-Result sent to the browser
+Result sent to the browser.
 ```html
-  <html><head></head><body>
+  <html>
+  <head>
+    <script src="path/to/vuejs-2.0.js"></script>
+  </head>
+  <body>
     <div id="vue-app">
       <h1>My Vue App</h1>
       <h2>My Page of Interesting Info</h2>
       <my-component message="Hellow World!">
-        <p>Some fabulous information</p>
+        <p>This block is sent to a vue slot</p>
       </my-component>    
     </div>
   
@@ -118,15 +136,19 @@ Result sent to the browser
   </body></html>
 ````
 
-After Vuejs parses the script body
+After Vuejs parses the script body.
 ```html
-  <html><head></head><body>
+  <html>
+  <head>
+    <script src="path/to/vuejs-2.0.js"></script>
+  </head>
+  <body>
     <div id="vue-app">
       <h1>My Vue App</h1>
       <h2>My Page of Interesting Info</h2>
       <div>
         <p>This is a Vuejs single-file-component Hello World!</p>
-        <p>Some fabulous information</p>
+        <p>This block is sent to a vue slot</p>
       </div>
     </div>
 
@@ -160,11 +182,13 @@ Let look at these methods in more detail.
   Inserts/wraps block with vue root-app tags...
   
 #### vue_root()
-  Access the Ruby object model representing your vue app...
+  Access the Ruby object model representing your vue app(s)...
 
 ## Configuration and Options
 
 ### Defaults
+
+This readme code block will eventually be replaced by a link to the file where defaults are defined.
 
 ```ruby
   @defaults = {
@@ -190,6 +214,8 @@ Let look at these methods in more detail.
 ```
 
 ## More Examples
+
+Coming soon: Gists with full examples for Rails, Sinatra, Rack, ...
 
 Here's an example Rack app using vue-helpers to define and package a Vuejs front-end app.
 
@@ -217,7 +243,7 @@ Here's an example Rack app using vue-helpers to define and package a Vuejs front
               This is componenet block passed to slot {{ exclamation }}.
             <% end %>
           </div>
-          <%= vue_yield %>
+          <%= vue_app %>
         </body>
       EEOOFF
       

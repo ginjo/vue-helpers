@@ -8,11 +8,16 @@ module Vue
   
     def self.included(other)
       other.send(:include, Vue::Helpers::Methods)
-      # TODO: This only handles Sinatra (and maybe Rack).
-      # Find a way to make this work in Rails (and others?).
-      if other.respond_to?(:use)
-        other.send(:use, Vue::Helpers::Server)
-      end
+      #Rails.application.configure.middleware.use Vue::Helpers::Server
+      # NOTE: Rack middleware cannot be dynamically inserted at runtime.
+      # So while this works in Sinatra (at load time), it will not work in rails,
+      # at least not as writting here.
+      #
+      # if other.respond_to?(:use)
+      #   other.send(:use, Vue::Helpers::Server)
+      # elsif other.ancestors.find{|a| a.to_s[/ApplicationHelper/]}
+      #   Rails.application.configure.middleware.use Vue::Helpers::Server
+      # end
     end
     
   end 
