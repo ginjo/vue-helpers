@@ -75,6 +75,7 @@ module Vue
           case current_template_engine.to_s
           when /erb/
             #puts "Capturing ERB block."
+            return(capture(*args, &block)) if respond_to?(:capture)
             pos = buffer(buffer_name).size
             yield(*args)
             #puts "Capture_html block.call result: #{r}"
@@ -89,6 +90,7 @@ module Vue
         end
         
         def concat_content(text='', buffer_name:nil)
+          return(text) if respond_to?(:capture)
           #puts "CONCAT_CONTENT current_template_engine: #{current_template_engine}."
           case current_template_engine.to_s
           when /erb/ 

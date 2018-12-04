@@ -45,6 +45,9 @@ the installed packages of your server OS.
 
 ## Simple Example
 
+This example assumes you are using a rack-based framework and ERB templates.
+However, neither Rack nor ERB are required to use the vue-helpers gem.
+
 views/foo.erb
 ```erb  
   <h2>My Page of Interesting Info</h2>
