@@ -1,6 +1,6 @@
 # Vue::Helpers
 
-Vue-helpers is a Ruby gem that provides *view helper* methods for adding Vuejs functionality to your Ruby applications, without requiring backend Javascript processing. If you're developing a Ruby web application and want to keep your Javascript strictly on the front-end, vue-helpers can assist with the following tasks.
+Vue-helpers is a Ruby gem that provides *view helper* methods for adding Vuejs functionality to your Ruby applications, without requiring a backend Javascript engine. If you're developing a Ruby web application and want to keep your Javascript strictly on the front-end, vue-helpers can assist with the following tasks.
 
 * Parse single-file-component.vue files.
 * Automate vue component and root boilerplate code.
@@ -12,7 +12,7 @@ Vue-helpers is a Ruby gem that provides *view helper* methods for adding Vuejs f
 * Pass variables and data to vue root and component js objects.
 * Inline the rendered html/js or serve it as an external script resource.
 
-Vue-helpers officially supports Rails, Sinatra, and Rack applications using Erb, Haml, and Slim templating. Other frameworks and templating systems are likely compatible out-of-the-box. In most cases, support for additional libraries is easily integrated.
+The Vue-helpers gem officially supports Rails, Sinatra, and Rack applications using Erb, Haml, and Slim templating. In most cases, support for additional frameworks and templating libraries is easily integrated.
 
 
 ## Requirements
@@ -40,20 +40,19 @@ Or install it yourself as:
     
 #### Optional Requirements
 
-If you want to serve the Vue's javascript to your clients using external script resources,
-Make sure ```rack``` is part of your get-set. You only need to consider this if you are not
-using Rails, Sinatra, or any of the other Rack-based frameworks.
+If you want to serve Vuejs javascript to your clients using external script resources,
+Make sure ```rack``` is part of your gem set. You only need to consider this if you are not
+using a Rack-based framework.
 
-If you want to use the ```:minify``` option to compress the javascript returned to the browser,
-Add the ```uglifier``` gem to your Gemfile.
-Uglifier requires a Javascript runtime, so you will need to add nodejs or equivalent to
-the installed packages on your server OS.
+If you want to use the ```:minify``` option for compressing javascript output,
+add the ```uglifier``` gem to your Gemfile.
+Uglifier requires a Javascript runtime, so nodejs or equivalent will need to be installed on your server OS.
     
 
 ## Simple Example
 
 This example assumes you are using a rack-based framework and ERB templates.
-However, neither Rack nor ERB are required to use the vue-helpers gem.
+Note that neither Rack nor ERB are required to use the vue-helpers gem.
 
 your-app-helpers.rb
 ```ruby
@@ -136,7 +135,7 @@ Result sent to the browser.
   </body></html>
 ````
 
-After Vuejs parses the script body.
+After Vuejs parses the script body in the browser.
 ```html
   <html>
   <head>
@@ -171,9 +170,7 @@ There are only three methods in vue-helpers that you need to know.
   vue_root(name)
 ```
 
-These methods parse your .vue files, insert Vue tags in your ruby template, and package all the boilerplate and compiled js code for delivery to the client. You don't need to worry about where to inline your components, where to put the Vue root-app, or how to configure Webpack or Vue loader.
-
-Let look at these methods in more detail.
+These methods parse your .vue files, insert vue tags in your ruby template, and package all the boilerplate and compiled js code for delivery to the client. You don't need to worry about where to inline your components, where to put the Vue root-app, or how to configure Webpack or Vue loader.
 
 #### vue_component()
   Inserts/wraps block with vue component tags...
@@ -188,7 +185,7 @@ Let look at these methods in more detail.
 
 ### Defaults
 
-This readme code block will eventually be replaced by a link to the file where defaults are defined.
+This readme code-block will eventually be replaced by a link to the file where defaults are defined.
 
 ```ruby
   @defaults = {
@@ -283,7 +280,7 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/vue-helper.
+Bug reports and pull requests are welcome on GitHub at https://github.com/ginjo/vue-helper.
 
 ## License
 
