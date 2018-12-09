@@ -42,7 +42,7 @@ module Vue
         
     # Include this module in your controller (or action, or routes, or whatever).
     #
-    # SEE helper_refinements.rb for the helpers' supporting methods!
+    # SEE helper_refinements.rb for the helpers supporting methods!
     #
     module Methods
     
@@ -68,20 +68,20 @@ module Vue
           root_name:Vue::Helpers.root_name,
           attributes:{},
           tag_name:nil,
-          file_name:name,
-          locals:{},  # may be useless
-          template_engine:current_template_engine,
+          file_name:nil,
+          locals:nil, # may be useless
+          template_engine:nil,
+          **attitional_attributes,
           &block
         )
         
         component = vue_root(root_name).component(name,
           root_name:root_name,
           file_name:file_name,
-          template_engine:template_engine,
-          #context:self        
+          template_engine:template_engine
         )
         
-        component_output = component.render(tag_name, locals:locals, attributes:attributes, &block)
+        component_output = component.render(tag_name, locals:locals, attributes:attributes.merge(attitional_attributes), &block)
         
         if block_given?
           #puts "Vue_component concating content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"

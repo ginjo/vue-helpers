@@ -26,20 +26,27 @@ module Vue
         
         # TODO: Do we need this: 'ERB::Util.html_escape string'. It will convert all html tags like this: "Hi I&#39;m some text. 2 &lt; 3".
         def render_ruby_template(template_text_or_file, locals:{}, template_engine:current_template_engine)
-          #puts "RENDER_ruby_template(\"#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}\", locals:<locals>, template_engine:#{template_engine})"
-            
+          puts "RENDER_ruby_template(\"#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}\", locals:#{locals}, template_engine:#{template_engine}), Tilt.current_tempate: '#{Tilt.current_template}'"
+          #puts self
+          
           tilt_template = begin
             case template_text_or_file
-            when Symbol; Tilt.new(template_path(template_text_or_file, template_engine:template_engine), 1, outvar: Vue::Helpers.vue_outvar)
-            when String; Tilt.template_for(template_engine).new(nil, 1, outvar: Vue::Helpers.vue_outvar){template_text_or_file}
+            when Symbol
+              path = template_path(template_text_or_file, template_engine:template_engine)
+              #puts "RENDER_ruby_template path-if-symbol: #{path}"
+              Tilt.new(path, 1, outvar: Vue::Helpers.vue_outvar) if File.file?(path)            
+            when String
+              Tilt.template_for(template_engine).new(nil, 1, outvar: Vue::Helpers.vue_outvar){template_text_or_file}
             end
           rescue
             # TODO: Make this a logger.debug output.
-            #puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
+            puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
             nil
           end
         
-          tilt_template.render(self, **locals) if tilt_template.is_a?(Tilt::Template)
+          rslt = tilt_template.render(self, **locals) if tilt_template.is_a?(Tilt::Template)
+          #puts "RENDER_ruby_template '#{tilt_template}' result: #{rslt}"
+          rslt
         end
         
         

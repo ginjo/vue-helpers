@@ -23,10 +23,12 @@ module Vue
     class VueRepository < Hash
       attr_reader :context
       
+      # Always pass a context when creating a VueRepository.
       def initialize(context)
         @context = context
       end
     
+      # Master get_or_create for any object in the repository.
       def get_or_create(klas, name, **options)
         obj = fetch(name){|n| self[name] = klas.new(name, **options.merge({repo:self}))}
         obj.repo ||= self
@@ -34,11 +36,13 @@ module Vue
         obj
       end
       
+      # Gets or creates a VueRoot instance.
       def root(*args)
         get_or_create(VueRoot, *args)
       end
       alias_method :[], :root
       
+      # Gets or creates a VueComponent instance.
       def component(*args)
         get_or_create(VueComponent, *args)
       end
@@ -71,14 +75,12 @@ module Vue
         root_name:        nil,
         file_name:        nil,
         template_engine:  nil,
-        #context:          nil,
         
         # Vue-specific options for browser processing.
         # TODO: We can accept :data, :components, and other vue-spepcific options,
         # but multiple calls will only respect the last (or first?) one.
         # ... Unless we create a fancy method to merge vue-component options.
         data:             {},
-        #components:       [], I don't think we need this here, it's covered by a method.
         watch:            {},
                 
         # These I think we can still store, since they shouldn't change throughout a single request.
@@ -105,8 +107,6 @@ module Vue
       
       def initialize_options(**options)
         return self unless options.size > 0 && !@initialized
-        # This is experimental, just to see if this works here away from the controller instance.
-        #@template_engine = Tilt.current_template
 
         merged_options = DEFAULTS.dup.merge(options)
         merged_options.each do |k,v|
@@ -115,8 +115,10 @@ module Vue
         
         # TODO: Do this (handle dynamic defaults) for other parameters too, like file_name, app_name, etc.
         if context
+          #puts "VueObject#initialize_options '#{name}' setting @template_engine (already: '#{@template_engine}'). to context.current_template_engine: #{context.current_template_engine}"
+          #puts "Tilt.current_template: #{Tilt.current_template}"
           @template_engine ||= context.current_template_engine
-          #vue_object_list[name] = self
+          @file_name ||= @name
         end
         
         load_dot_vue if file_name
@@ -173,11 +175,13 @@ module Vue
           attributes['is'] = name
         end
         
+        block_content = context.capture_html(root_name:root_name, **locals, &block) if block_given?
+        
         wrapper(:component_call_html, locals:locals,
           name:name,
           tag_name:tag_name,
           el_name:(tag_name || name).to_s.kebabize,
-          block_content:(context.capture_html(root_name:root_name, **locals, &block) if block_given?),
+          block_content:block_content.to_s,
           attributes_string:attributes.to_html_attributes
         )
       end
@@ -194,7 +198,7 @@ module Vue
           parsed_script.gsub( 
             /export\s+default\s*(\{|Vue.component\s*\([^\{]*\{)(.*$)/m,
             js_output
-          ).interpolate(name: name.to_s.camelize, template_spec: template_spec)
+          ).interpolate(name: name.to_s.camelize, template_spec: template_spec) if parsed_script
       end
       
       
@@ -207,20 +211,22 @@ module Vue
     class VueRoot < VueObject
       def type; 'root'; end
       
-      # Creates or gets a related component
+      # Gets or creates a related component.
       def component(_name, **options)
         repo.component(_name, **options.merge({root_name:(name || root_name)}))
       end
       
+      # Selects all related components.
       def components
         repo.select{|k,v| v.type == 'component' && v.root_name == name}.values
       end
       
-      # JS string of all component object definitions
+      # Returns JS string of all component object definitions.
       def components_js(**options)
         components.map{|c| c.to_component_js(**options)}.join("\n")
       end
       
+      # Returns HTML string of component vue templates in x-template format.
       def components_x_template
         components.map{|c| c.get_x_template}.join("\n")
       end      
