@@ -69,7 +69,7 @@ module Vue
           attributes:{},
           tag_name:nil,
           file_name:nil,
-          locals:nil, # may be useless
+          locals:{}, # may be useless
           template_engine:nil,
           **attitional_attributes,
           &block

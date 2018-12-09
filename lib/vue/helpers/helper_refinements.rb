@@ -20,21 +20,28 @@ module Vue
     end
     
     module HelperRefinements
-      refine Methods do
+      #refine Methods do
+
+      module RefinementMethods
+      
+        using HelperRefinements
         
         using CoreRefinements
         
         # TODO: Do we need this: 'ERB::Util.html_escape string'. It will convert all html tags like this: "Hi I&#39;m some text. 2 &lt; 3".
         def render_ruby_template(template_text_or_file, locals:{}, template_engine:current_template_engine)
           puts "RENDER_ruby_template(\"#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}\", locals:#{locals}, template_engine:#{template_engine}), Tilt.current_tempate: '#{Tilt.current_template}'"
-          #puts self
           
           tilt_template = begin
             case template_text_or_file
             when Symbol
               path = template_path(template_text_or_file, template_engine:template_engine)
               #puts "RENDER_ruby_template path-if-symbol: #{path}"
-              Tilt.new(path, 1, outvar: Vue::Helpers.vue_outvar) if File.file?(path)            
+              if File.file?(path)
+                Tilt.new(path, 1, outvar: Vue::Helpers.vue_outvar)
+              else
+                puts "RENDER_ruby_template template-missing: #{path}"
+              end           
             when String
               Tilt.template_for(template_engine).new(nil, 1, outvar: Vue::Helpers.vue_outvar){template_text_or_file}
             end
@@ -76,7 +83,7 @@ module Vue
         # TODO: Probbably need to pass root_name (and other options?) on to sub-components inside block.
         # Does vue even allow components in the block of a component call?
         def capture_html(*args, root_name:Vue::Helpers.root_name, buffer_name:nil, **locals, &block)
-          #puts "CAPTURE_HTML self: #{self}, methods: #{methods.sort.to_yaml}"
+          puts "CAPTURE_HTML args: #{args}, root_name: #{root_name}, buffer_name:#{buffer_name}, locals:#{locals}"
           return unless block_given?
           #puts "CAPTURE_HTML current_template_engine: #{current_template_engine}."
           case current_template_engine.to_s
@@ -112,11 +119,16 @@ module Vue
         def secure_key
           SecureRandom.urlsafe_base64(32)
         end
+        
+      end # RefinementMethods
       
+      refine Helpers::Methods do
+        include RefinementMethods
       end # refine Methods
+      
     end # HelperRefinements
 
-    using HelperRefinements
+    # using HelperRefinements
     
   end # Helpers
 end # Vue
