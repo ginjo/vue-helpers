@@ -19,7 +19,7 @@ module Vue
       minify:                  false,
       register_local:          false,
       root_name:               'vue-app',
-      template_engine:         :erb,
+      template_engine:         :erb, # This should not force template_engine, only recommend if no other can be found.
       template_literal:        true,
       views_path:              'app/views',
       vue_outvar:              '@_vue_outvar',
