@@ -69,6 +69,7 @@ module Vue
     # methods on the VueObject.
     #
     class VueObject
+      
       DEFAULTS = {
         # Only what's necessary to load dot-vue file.
         name:             nil,
@@ -117,7 +118,8 @@ module Vue
         if context
           #puts "VueObject#initialize_options '#{name}' setting @template_engine (already: '#{@template_engine}'). to context.current_template_engine: #{context.current_template_engine}"
           #puts "Tilt.current_template: #{Tilt.current_template}"
-          @template_engine ||= context.current_template_engine
+          # See todo note about current_template_engine method.
+          #@template_engine ||= context.current_template_engine
           @file_name ||= @name
         end
         

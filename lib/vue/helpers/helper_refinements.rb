@@ -14,22 +14,23 @@ require_relative 'utilities'
 #
 # This actually works, even with the self-refiment at the bottom of the module.
 #
+# See Ruby 2.4 release notes & changelog for more info on the refinement features used here:
+# https://github.com/ruby/ruby/blob/v2_4_0/NEWS
+#
 module Vue
   module Helpers
     module Methods
     end
     
     module HelperRefinements
-      #refine Methods do
-
-      module RefinementMethods
       
-        using HelperRefinements
+      refine Methods do
         
+        # This has to be here, NOT above under HelperRefinements.
         using CoreRefinements
         
         # TODO: Do we need this: 'ERB::Util.html_escape string'. It will convert all html tags like this: "Hi I&#39;m some text. 2 &lt; 3".
-        def render_ruby_template(template_text_or_file, locals:{}, template_engine:current_template_engine)
+        def render_ruby_template(template_text_or_file, locals:{}, template_engine:nil)
           puts "RENDER_ruby_template(\"#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}\", locals:#{locals}, template_engine:#{template_engine}), Tilt.current_tempate: '#{Tilt.current_template}'"
           
           tilt_template = begin
@@ -37,17 +38,19 @@ module Vue
             when Symbol
               path = template_path(template_text_or_file, template_engine:template_engine)
               #puts "RENDER_ruby_template path-if-symbol: #{path}"
-              if File.file?(path)
+              if File.file?(path.to_s)
                 Tilt.new(path, 1, outvar: Vue::Helpers.vue_outvar)
               else
-                puts "RENDER_ruby_template template-missing: #{path}"
+                puts "RENDER_ruby_template template-missing: #{template_text_or_file}"
               end           
             when String
-              Tilt.template_for(template_engine).new(nil, 1, outvar: Vue::Helpers.vue_outvar){template_text_or_file}
+              Tilt.template_for(template_engine || current_template_engine).new(nil, 1, outvar: Vue::Helpers.vue_outvar){template_text_or_file}
             end
           rescue
             # TODO: Make this a logger.debug output.
             puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
+            puts "BACKTRACE:"
+            puts $!.backtrace
             nil
           end
         
@@ -56,16 +59,31 @@ module Vue
           rslt
         end
         
-        
+        # TODO: This maybe should return nil instead of default if no current engine.
         def current_template_engine
           #current_engine || Vue::Helpers.template_engine
           Tilt.default_mapping.template_map.invert[Tilt.current_template.class] || Vue::Helpers.template_engine
         end
         
-        def template_path(name, template_engine:current_template_engine)
-          tp = File.join(Dir.getwd, Vue::Helpers.views_path, "#{name.to_s}.vue.#{template_engine}")
+        # TODO: Decide how we want to determine template-engine suffix.
+        # Search for all possible suffixes? Search for only the given template_engine? Something else?
+        def template_path(name, template_engine:nil)   #current_template_engine)
+          template_engine ||= '*'
+          #tp = File.join(Dir.getwd, Vue::Helpers.views_path, "#{name.to_s}.vue.#{template_engine}")
           #puts "Template_path generated for '#{name}': #{tp}"
-          tp
+          #tp
+          puts "TEMPLATE_path searching with name: #{name}, template_engine: #{template_engine}"
+          ([Vue::Helpers.views_path].flatten.uniq.compact || Dir.getwd).each do |start_path|
+            puts "TEMPLATE_path searching views-path: #{start_path}"
+            Dir.breadth_first("*", base:start_path) do |path|
+              puts "TEMPLATE_path inspecting file: #{path}"
+              return path if File.fnmatch(File.join('*', "#{name}.vue.#{template_engine}"), path)
+              return path if File.fnmatch(File.join('*', "#{name}.vue"), path)
+              return path if File.fnmatch(File.join('*', name.to_s), path)
+            end
+          end
+
+          return nil
         end
         
         # Capture & Concat
@@ -116,19 +134,16 @@ module Vue
           end
         end
         
+        # TODO: This should be a Vue::Helpers or Utilities module method.
         def secure_key
           SecureRandom.urlsafe_base64(32)
         end
         
-      end # RefinementMethods
-      
-      refine Helpers::Methods do
-        include RefinementMethods
       end # refine Methods
       
     end # HelperRefinements
-
-    # using HelperRefinements
+    
+    using HelperRefinements
     
   end # Helpers
 end # Vue

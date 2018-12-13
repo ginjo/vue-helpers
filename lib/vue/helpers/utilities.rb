@@ -26,7 +26,22 @@ module Vue
           inject(''){|o, kv| o.to_s << "#{kv[0]}=\"#{kv[1]}\" "}
         end
       end
-    end
+      
+      refine Dir.singleton_class do
+        # Returns list of files breadth-first.
+        # Pass :no_recurse=>true to block directory recursion.
+        # Pass a block to yield each found path to the block.
+        def breadth_first(pattern, flags=0, base: Dir.getwd, **opts, &block)
+          files, dirs = [], []
+          Dir.glob(File.join(base, pattern), flags).each{|path| FileTest.directory?(path) ? dirs.push(path) : files.push(path)}
+          
+          files.each{|f| yield(f)} if block_given?
+          dirs.each{|dir| files.concat(breadth_first(pattern, flags, base:dir, &block))} unless opts[:no_recurse]
+      
+          files
+        end
+      end
+    end # CoreRefinements
     
     module ModErb
       def initialize(*args)

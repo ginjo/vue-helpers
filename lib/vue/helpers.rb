@@ -8,10 +8,6 @@ module Vue
   
     def self.included(other)
       other.send(:include, Vue::Helpers::Methods)
-      # TODO: Disable for public distribution.
-      # This INCLUDES helper methods that are usually just refinements.
-      # This helps debugging but leaves a bunch of methods in the controller/app/whatever space.
-      other.send(:include, Vue::Helpers::HelperRefinements::RefinementMethods)
       
       #Rails.application.configure.middleware.use Vue::Helpers::Server
       # NOTE: Rack middleware cannot be dynamically inserted at runtime.
