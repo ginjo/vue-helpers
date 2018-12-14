@@ -69,7 +69,7 @@ module Vue
           attributes:{},
           tag_name:nil,
           file_name:nil,
-          locals:{}, # may be useless
+          locals:{},
           template_engine:nil,
           **attitional_attributes,
           &block
@@ -95,12 +95,15 @@ module Vue
         end
       end  # vue_component()
     
+      
+      # TODO: These three methods should be refactored to better manage arg passing.
+      # For example, vue_app should pass the root object to .._inline and .._external,
+      # so those methods don't have to re-lookup with vue_root(root_name).
     
       # Outputs html script block of entire collection of vue roots and components.
-      # TODO: Should this use x-templates?
-      def vue_app_inline(root_name = Vue::Helpers.root_name, **options)
+      def vue_app_inline(root_name = Vue::Helpers.root_name, locals:{}, **options)
         #return unless compiled = compile_vue_output(root_name, **options)
-        return unless compiled = vue_root(root_name).compile_app_js(**options)
+        return unless compiled = vue_root(root_name).compile_app_js(locals:locals, **options)
         # TODO: Use 'wrapper' here.
         interpolated_wrapper = Vue::Helpers.inline_script_html.interpolate(compiled: compiled)
       end
@@ -120,8 +123,10 @@ module Vue
       end
       
       def vue_app(root_name = Vue::Helpers.root_name,
-          external_resource: Vue::Helpers.external_resource,
-          template_literal:  Vue::Helpers.template_literal,
+          external_resource:  Vue::Helpers.external_resource,
+          template_literal:   Vue::Helpers.template_literal,
+          minify:             Vue::Helpers.minify,
+          locals:             {},
           **options,
           &block
         )
@@ -130,12 +135,12 @@ module Vue
                 
         root_app = vue_root(root_name, **options)
         
-        block_result = capture_html(root_name:root_name, **options, &block) if block_given?
+        block_result = capture_html(root_name:root_name, locals:locals, **options, &block) if block_given?
         
         root_script_output = case external_resource
-        when true; vue_app_external(root_name, **options)  #->r{r==true && !template_literal}
-        when String; vue_app_external(root_name, **options)
-        else vue_app_inline(root_name, **options)
+        when true; vue_app_external(root_name, locals:locals, **options)  #->r{r==true && !template_literal}
+        when String; vue_app_external(root_name, locals:locals, **options)
+        else vue_app_inline(root_name, locals:locals, **options)
         end
         
         #x_templates = vue_root.components.inject(''){|s,c| s << c.get_x_template; s}

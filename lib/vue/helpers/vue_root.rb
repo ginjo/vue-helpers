@@ -30,14 +30,14 @@ module Vue
       end
       
       # Gets or creates a VueRoot instance.
-      def root(*args)
-        get_or_create(VueRoot, *args)
+      def root(name, **options)
+        get_or_create(VueRoot, name, **options)
       end
       alias_method :[], :root
       
       # Gets or creates a VueComponent instance.
-      def component(*args)
-        get_or_create(VueComponent, *args)
+      def component(name, **options)
+        get_or_create(VueComponent, name, **options)
       end
     end
     
@@ -243,8 +243,8 @@ module Vue
       end      
       
       # Compiles js output for entire vue-app for this root object.
-      # TODO: Follow this backwards/upstream to determine if parsed_template, parsed_script, and locals are being handled correctly.
-      def compile_app_js( **options  # generic opts placeholder until we get the args/opts flow worked out.
+      # TODO: Clean up args, especially locals handling.
+      def compile_app_js(locals:{}, **options  # generic opts placeholder until we get the args/opts flow worked out.
           # root_name = Vue::Helpers.root_name,
           # file_name:root_name,
           # app_name:root_name.camelize, # Maybe obsolete, see js_var_name
@@ -276,7 +276,7 @@ module Vue
           #components:       (components.keys.map{|k| k.to_s.camelize}.join(', ') if register_local),
           components:       components.map{|c| c.js_var_name}.join(', '),
           vue_data_json:    data.to_json
-        }
+        }.merge!(locals)
         
         # {block_content:rendered_block, vue_sfc:{name:name, vue_template:template, vue_script:script}}
         #rendered_root_sfc_js = \
