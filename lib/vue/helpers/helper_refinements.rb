@@ -33,32 +33,41 @@ module Vue
         def render_ruby_template(template_text_or_file, locals:{}, template_engine:nil)
           #puts "RENDER_ruby_template(\"#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}\", locals:#{locals}, template_engine:#{template_engine}), Tilt.current_tempate: '#{Tilt.current_template}'"
           
-          tilt_template = begin
-            case template_text_or_file
-            when Symbol
-              path = template_path(template_text_or_file, template_engine:template_engine)
-              #puts "RENDER_ruby_template path-if-symbol: #{path}"
-              if File.file?(path.to_s)
-                Tilt.new(path, 1, outvar: Vue::Helpers.vue_outvar)
-              else
-                # TODO: This should be logger.debug
-                #puts "RENDER_ruby_template template-missing: #{template_text_or_file}"
-              end           
-            when String
-              Tilt.template_for(template_engine || current_template_engine).new(nil, 1, outvar: Vue::Helpers.vue_outvar){template_text_or_file}
-            end
-          rescue
-            # TODO: Make this a logger.debug output.
-            puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
-            #puts "BACKTRACE:"
-            #puts $!.backtrace
-            nil
-          end
+          tilt_template = load_template(template_text_or_file, template_engine:nil)
         
-          rslt = tilt_template.render(self, **locals) if tilt_template.is_a?(Tilt::Template)
+          rslt = if tilt_template.is_a?(Tilt::Template)
+            tilt_template.render(self, **locals)
+          else
+            tilt_template
+          end
+          
           #puts "RENDER_ruby_template '#{tilt_template}' result: #{rslt}"
-          puts "  Rendered #{path} with: #{tilt_template}" if path && rslt
+          puts "  Rendered #{template_text_or_file.inspect[0..24]} with: #{tilt_template}" if rslt
           rslt
+        end
+        
+        def load_template(template_text_or_file, template_engine:nil)
+          case template_text_or_file
+          when Tilt::Template
+            template_text_or_file
+          when Symbol
+            path = template_path(template_text_or_file, template_engine:template_engine)
+            #puts "RENDER_ruby_template path-if-symbol: #{path}"
+            if File.file?(path.to_s)
+              Tilt.new(path, 1, outvar: Vue::Helpers.vue_outvar)
+            else
+              # TODO: This should be logger.debug
+              #puts "RENDER_ruby_template template-missing: #{template_text_or_file}"
+            end           
+          when String
+            Tilt.template_for(template_engine || current_template_engine).new(nil, 1, outvar: Vue::Helpers.vue_outvar){template_text_or_file}
+          end
+        rescue
+          # TODO: Make this a logger.debug output.
+          puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
+          #puts "BACKTRACE:"
+          #puts $!.backtrace
+          nil
         end
         
         # Returns nil instead of default if no current engine.

@@ -75,6 +75,8 @@ module Vue
           &block
         )
         
+        # TODO: This should only pass args that are necessary to build the object.
+        # Any locals or args from the current helper call should be handled elsewhere.
         component = vue_root(root_name).component(name,
           root_name:root_name,
           file_name:file_name,
@@ -118,10 +120,10 @@ module Vue
       end
       
       def vue_app(root_name = Vue::Helpers.root_name,
-        external_resource: Vue::Helpers.external_resource,
-        template_literal:  Vue::Helpers.template_literal,
-        **options,
-        &block
+          external_resource: Vue::Helpers.external_resource,
+          template_literal:  Vue::Helpers.template_literal,
+          **options,
+          &block
         )
         
         options.merge!(template_literal:template_literal)

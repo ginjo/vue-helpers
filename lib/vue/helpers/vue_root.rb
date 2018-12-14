@@ -9,17 +9,10 @@ module Vue
     using CoreRefinements
     using HelperRefinements
   
-    # # Instance represents a single vue root app and all of its components.
-    # class RootApp
-    #   attr_accessor :components, :data
-    # 
-    #   def initialize(*args, **opts)
-    #     @components = opts[:components] || {}
-    #     @data       = opts[:data] || {}
-    #   end
-    # end
-    
-    # Always use the repository interface for vue-object crud operations.
+    # Stores ruby representations of vue objects.
+    # Intended for a single request cycle.
+    # TODO: Rename this to VueStash.
+    # NOTE: Always use the repository interface for vue-object crud operations from controller or views.
     class VueRepository < Hash
       attr_reader :context
       
@@ -48,25 +41,12 @@ module Vue
       end
     end
     
-    # TODO: Consider this as a base for VueRoot and VueComponent classes.
-    #
-    # TODO: Yikes!!! Vue components can be called MULTIPLE times,
+    # NOTE: Vue components can be called MULTIPLE times,
     # so we can't store the calling args OR the block here.
-    # Also, we can't pass locals to the dot-vue file, since there is
-    # only ONE of them per request, per component-name.
-    # Locals are handled by Vue itself in the browser.
-    #
-    # If the user passed locals to the rendering call in the controller,
-    # do we need to pass those locals down the chain?
-    # To the dot-vue file?
-    # To the block-capture?
     #
     # But note that Vue root-apps can only be called once,
     # so should we continue to store the vue-app calling args & block here,
     # or pass them in at run-time as well? I think it ALL has to be dynamic.
-    #
-    # So note that most of the commented-out options here will need to be
-    # methods on the VueObject.
     #
     class VueObject
       
@@ -77,17 +57,13 @@ module Vue
         file_name:        nil,
         template_engine:  nil,
         
+        # The loaded (but not rendered or parsed) dot-vue file as Tilt teplate.
+        # See 'initialize_options()' below
+        tilt_template:    nil,
+        
         # Vue-specific options for browser processing.
-        # TODO: We can accept :data, :components, and other vue-spepcific options,
-        # but multiple calls will only respect the last (or first?) one.
-        # ... Unless we create a fancy method to merge vue-component options.
         data:             {},
         watch:            {},
-                
-        # These I think we can still store, since they shouldn't change throughout a single request.
-        rendered_dot_vue: nil,
-        parsed_template:  nil,
-        parsed_script:    nil,
         
         # Utility
         repo:             nil
@@ -126,25 +102,54 @@ module Vue
           @file_name ||= @name
         end
         
-        load_dot_vue if file_name
+        #load_dot_vue if file_name
+        load_tilt_template if file_name
         
         @initialized = true
         #puts "VueObject initialized options: #{name}, self: #{self}"
         self
       end
 
-      # Renders and parses sfc file.
-      # Used to be 'render_sfc_file'
-      def load_dot_vue
-        self.rendered_dot_vue = context.render_ruby_template(file_name.to_sym, template_engine:template_engine)
-        parse_vue_sfc(rendered_dot_vue.to_s)
+      #   # Renders and parses sfc file.
+      #   # Used to be 'render_sfc_file'.
+      #   # TODO: Don't render dot-vue, just load the Tilt template.
+      #   def load_dot_vue(locals:{})
+      #     self.rendered_dot_vue = context.render_ruby_template(file_name.to_sym, locals:locals, template_engine:template_engine)
+      #     parse_vue_sfc(rendered_dot_vue.to_s)
+      #   end
+      
+      # Loads a dot-vue into a tilt template, but doesn't render or parse it.
+      def load_tilt_template
+        self.tilt_template = context.load_template(file_name.to_sym, template_engine:template_engine)
       end
+      
+      def render_template(**locals)
+        context.render_ruby_template(tilt_template, locals:locals, template_engine:template_engine)
+      end
+      
+      #   # Parses a rendered sfc file.
+      #   # Returns [nil, template-as-html, nil, script-as-js].
+      #   # Must be HTML (already rendered from ruby template).
+      #   def parse_vue_sfc(template_text=rendered_dot_vue)
+      #     a,self.parsed_template,c,self.parsed_script = template_text.to_s.match(/(.*<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
+      #   end
       
       # Parses a rendered sfc file.
       # Returns [nil, template-as-html, nil, script-as-js].
       # Must be HTML (already rendered from ruby template).
-      def parse_vue_sfc(template_text=rendered_dot_vue)
-        a,self.parsed_template,c,self.parsed_script = template_text.to_s.match(/(.*<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
+      def parse_template(**locals)
+        rendered_template = render_template(**locals)
+        rslt = {}
+        rslt[:template], rslt[:script] = rendered_template.to_s.match(/(.*<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a.values_at(2,4)
+        rslt
+      end
+      
+      def parsed_template(**locals)
+        parse_template(**locals)[:template]
+      end
+      
+      def parsed_script(**locals)
+        parse_template(**locals)[:script]
       end
       
       def context
@@ -169,10 +174,8 @@ module Vue
     class VueComponent < VueObject
       def type; 'component'; end
       
-      # Renders the html block to replace ruby view-template tags.
+      # Renders the html block to replace ruby vue_component tags.
       # NOTE: Locals may be useless here.
-      # TODO: Should this be in the VueComponent class?
-      # Used to be 'to_html_block'
       def render(tag_name=nil, locals:{}, attributes:{}, &block)
         # Adds 'is' attribute to html vue-component element,
         # if the user specifies an alternate 'tag_name' (default tag_name is name-of-component).
@@ -192,23 +195,26 @@ module Vue
       end
   
       # Builds js output string.
-      def to_component_js(register_local:Vue::Helpers.register_local, template_literal:Vue::Helpers.template_literal, **options)
+      # TODO: Follow this backwards/upstream to determine if parsed_template, parsed_script, and locals are being handled correctly.
+      def to_component_js(register_local:Vue::Helpers.register_local, template_literal:Vue::Helpers.template_literal, locals:{}, **options)
           # The above **options are not used yet, but need somewhere to catch extra stuff.
-          template_spec = template_literal ? "\`#{parsed_template.to_s.escape_backticks}\`" : "'##{name}-template'"
+          template_spec = template_literal ? "\`#{parsed_template(locals).to_s.escape_backticks}\`" : "'##{name}-template'"
           js_output = register_local \
             ? 'var #{name} = {template: #{template_spec}, \2;'
             : 'var #{name} = Vue.component("#{name}", {template: #{template_spec}, \2);'  # ) << ")"
           
           # TODO: Make escaping backticks optional, as they could break user templates with nested backtick blocks, like ${``}.
-          parsed_script.gsub( 
+          _parsed_script = parsed_script(locals)
+          _parsed_script.gsub( 
             /export\s+default\s*(\{|Vue.component\s*\([^\{]*\{)(.*$)/m,
             js_output
-          ).interpolate(name: name.to_s.camelize, template_spec: template_spec) if parsed_script
+          ).interpolate(name: name.to_s.camelize, template_spec: template_spec) if _parsed_script
       end
       
       
-      def get_x_template
-        wrapper(:x_template_html, name:name, template:parsed_template)
+      # TODO: Follow this backwards/upstream to determine if parsed_template, parsed_script, and locals are being handled correctly.
+      def get_x_template(**locals)
+        wrapper(:x_template_html, name:name, template:parsed_template(locals))
       end
     end
     
@@ -237,6 +243,7 @@ module Vue
       end      
       
       # Compiles js output for entire vue-app for this root object.
+      # TODO: Follow this backwards/upstream to determine if parsed_template, parsed_script, and locals are being handled correctly.
       def compile_app_js( **options  # generic opts placeholder until we get the args/opts flow worked out.
           # root_name = Vue::Helpers.root_name,
           # file_name:root_name,
@@ -274,9 +281,9 @@ module Vue
         # {block_content:rendered_block, vue_sfc:{name:name, vue_template:template, vue_script:script}}
         #rendered_root_sfc_js = \
         #app_js << (
-        components_js(**options) << "\n" << (
+        components_js(locals:{}, **options) << "\n" << (
           #render_sfc_file(file_name:file_name.to_sym, template_engine:template_engine, locals:locals).to_a[1] ||
-          parsed_script ||
+          parsed_script(locals) ||
           wrapper(:root_object_js, locals:locals, **options)
           #Vue::Helpers.root_object_js.interpolate(**locals)
         )

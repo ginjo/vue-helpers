@@ -28,9 +28,12 @@ module Vue
       end
       
       refine Dir.singleton_class do
+        # Args are like Dir.glob() with **opts accaptable.
+        #
         # Returns list of files breadth-first.
         # Pass :no_recurse=>true to block directory recursion.
         # Pass a block to yield each found path to the block.
+        #
         def breadth_first(pattern, flags=0, base: Dir.getwd, **opts, &block)
           files, dirs = [], []
           Dir.glob(File.join(base, pattern), flags).each{|path| FileTest.directory?(path) ? dirs.push(path) : files.push(path)}
