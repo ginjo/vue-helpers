@@ -75,8 +75,10 @@ module Vue
           &block
         )
         
+        puts "\n\nVue_component '#{name}' with args '#{local_variables.inject({}){ |c, i| c[i.to_s] = eval(i.to_s); c }}'"
+        
         # TODO: This should only pass args that are necessary to build the object.
-        # Any locals or args from the current helper call should be handled elsewhere.
+        # Locals should probably be passed here, but not tag_name or attributes or any other per-call params.
         component = vue_root(root_name).component(name,
           root_name:root_name,
           file_name:file_name,
@@ -101,25 +103,27 @@ module Vue
       # so those methods don't have to re-lookup with vue_root(root_name).
     
       # Outputs html script block of entire collection of vue roots and components.
-      def vue_app_inline(root_name = Vue::Helpers.root_name, locals:{}, **options)
+      def vue_app_inline(root_app, root_name = Vue::Helpers.root_name, locals:{}, **options)
         #return unless compiled = compile_vue_output(root_name, **options)
-        return unless compiled = vue_root(root_name).compile_app_js(locals:locals, **options)
+        return unless compiled = root_app.compile_app_js(locals:locals, **options)
         # TODO: Use 'wrapper' here.
-        interpolated_wrapper = Vue::Helpers.inline_script_html.interpolate(compiled: compiled)
+        # Returns interpolated_wrapper.
+        Vue::Helpers.inline_script_html.interpolate(compiled: compiled, **locals)
       end
   
       # Outputs html script block with src pointing to tmp file on server.
       # Note that x-templates will not work with external-resource scheme,
       # so this will always use template literals (backticks).
-      def vue_app_external(root_name = Vue::Helpers.root_name, **options)
+      def vue_app_external(root_app, root_name = Vue::Helpers.root_name, locals:{}, **options)
         #return unless compiled = compile_vue_output(root_name, **options)
-        return unless compiled = vue_root(root_name).compile_app_js(**options)
+        return unless compiled = root_app.compile_app_js(locals:{}, **options)
         
         key = secure_key
-        callback_prefix = Vue::Helpers.callback_prefix
         Vue::Helpers.cache_store[key] = compiled
+        callback_prefix = Vue::Helpers.callback_prefix
         # TODO: Use 'wrapper' here
-        interpolated_wrapper = Vue::Helpers.external_resource_html.interpolate(callback_prefix: callback_prefix, key: key)
+        # Returns interpolated_wrapper.
+        Vue::Helpers.external_resource_html.interpolate(callback_prefix: callback_prefix, key: key, **locals)
       end
       
       def vue_app(root_name = Vue::Helpers.root_name,
@@ -131,21 +135,25 @@ module Vue
           &block
         )
         
+         puts "\n\nVue_app '#{root_name}' with args '#{local_variables.inject({}) { |c, i| c[i.to_s] = eval(i.to_s); c }}'"
+        
         options.merge!(template_literal:template_literal)
                 
         root_app = vue_root(root_name, **options)
         
+        # TODO: Should this be moved to VueRoot instance, just like it is for VueComponent?
+        # TODO: !! Does this need to be rendered again?
         block_result = capture_html(root_name:root_name, locals:locals, **options, &block) if block_given?
         
         root_script_output = case external_resource
-        when true; vue_app_external(root_name, locals:locals, **options)  #->r{r==true && !template_literal}
-        when String; vue_app_external(root_name, locals:locals, **options)
-        else vue_app_inline(root_name, locals:locals, **options)
+          when true; vue_app_external(root_app, root_name, locals:locals, **options)  #->r{r==true && !template_literal}
+          when String; vue_app_external(root_app, root_name, locals:locals, **options)
+          else vue_app_inline(root_app, root_name, locals:locals, **options)
         end
         
         #x_templates = vue_root.components.inject(''){|s,c| s << c.get_x_template; s}
         #x_templates = vue_root.components_x_template
-        root_script_output =  vue_root.components_x_template.to_s + root_script_output unless template_literal
+        root_script_output.prepend(vue_root.components_x_template.to_s) unless template_literal
                 
         if block_result
           # TODO: This should use 'wrapper'.
@@ -153,7 +161,8 @@ module Vue
             # locals
             root_name:root_name,
             block_result:block_result,
-            root_script_output:root_script_output
+            root_script_output:root_script_output,
+            **locals
           ))
         else
           root_script_output

@@ -29,28 +29,35 @@ module Vue
         # This has to be here, NOT above under HelperRefinements.
         using CoreRefinements
         
-        # TODO: Do we need this: 'ERB::Util.html_escape string'. It will convert all html tags like this: "Hi I&#39;m some text. 2 &lt; 3".
-        def render_ruby_template(template_text_or_file, locals:{}, template_engine:nil)
-          #puts "RENDER_ruby_template(\"#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}\", locals:#{locals}, template_engine:#{template_engine}), Tilt.current_tempate: '#{Tilt.current_template}'"
+        # TODO: Cleanup Load/Render template calls upstream, then cleanup these methods here.
+        # These are a mess, since they were hacked together when their functionality was split up.
+        def render_ruby_template(template_text_or_file, template_engine:nil, locals:{})
+          #puts "  Rendering ruby template '#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}' with locals:#{locals}, template_engine:#{template_engine}, Tilt.current_tempate: '#{Tilt.current_template}'"
           
           tilt_template = load_template(template_text_or_file, template_engine:nil)
         
           rslt = if tilt_template.is_a?(Tilt::Template)
+            #puts "  Rendering #{tilt_template}"
+            #puts "  Rendering ruby template '#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...' from '#{tilt_template.file}' with locals:#{locals}, template_engine:#{template_engine}, Tilt.current_tempate: '#{Tilt.current_template}'"
+            #puts "  Rendering ruby template '#{template_text_or_file}' from '#{tilt_template.file}' with locals:#{locals}, template_engine:#{template_engine}, Tilt.current_tempate: '#{Tilt.current_template}'"
             tilt_template.render(self, **locals)
           else
+            puts "  Render_ruby_template bypassing rendering for '#{template_text_or_file}', since '#{tilt_template}' is not a Tilt::Template"
             tilt_template
           end
           
           #puts "RENDER_ruby_template '#{tilt_template}' result: #{rslt}"
-          puts "  Rendered #{template_text_or_file.inspect[0..24]} with: #{tilt_template}" if rslt
           rslt
         end
         
         def load_template(template_text_or_file, template_engine:nil)
+          #puts "  Loading template '#{template_text_or_file}' with engine: #{template_engine}"
           case template_text_or_file
           when Tilt::Template
+            #puts "  Loading existing tilt template '#{template_text_or_file}' from '#{template_text_or_file.file}' with engine: #{template_engine}"
             template_text_or_file
           when Symbol
+            #puts "  Loading template from symbol '#{template_text_or_file}' with engine: #{template_engine}"
             path = template_path(template_text_or_file, template_engine:template_engine)
             #puts "RENDER_ruby_template path-if-symbol: #{path}"
             if File.file?(path.to_s)
@@ -60,13 +67,14 @@ module Vue
               #puts "RENDER_ruby_template template-missing: #{template_text_or_file}"
             end           
           when String
+            #puts "  Loading template from string '#{template_text_or_file}' with engine: #{template_engine}"
             Tilt.template_for(template_engine || current_template_engine).new(nil, 1, outvar: Vue::Helpers.vue_outvar){template_text_or_file}
           end
         rescue
           # TODO: Make this a logger.debug output.
           puts "Render_ruby_template error building tilt template for #{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}...: #{$!}"
-          #puts "BACKTRACE:"
-          #puts $!.backtrace
+          puts "BACKTRACE:"
+          puts $!.backtrace
           nil
         end
         
@@ -77,7 +85,8 @@ module Vue
         end
         
         # TODO: Decide how we want to determine template-engine suffix.
-        # Search for all possible suffixes? Search for only the given template_engine? Something else?
+        #   Search for all possible suffixes? Search for only the given template_engine? Something else?
+        #   Is this already handled here?
         def template_path(name, template_engine:nil)   #current_template_engine)
           template_engine ||= '*'
           #tp = File.join(Dir.getwd, Vue::Helpers.views_path, "#{name.to_s}.vue.#{template_engine}")
@@ -117,6 +126,8 @@ module Vue
           return unless block_given?
           current_template = current_template_engine || Vue::Helpers.template_engine
           #puts "CAPTURE_HTML current_template: #{current_template}."
+          
+          #load_template(
           case current_template.to_s
           when /erb/
             #puts "Capturing ERB block."
@@ -132,6 +143,11 @@ module Vue
             #puts "Capturing generic template block."
             yield(*args)
           end
+          #   ,
+          #   
+          #   template_engine:current_template
+          # ).render(self, **locals)
+          
         end
         
         def concat_content(text='', buffer_name:nil)

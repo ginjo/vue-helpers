@@ -3,7 +3,7 @@ require_relative 'helper_refinements'
 
 module Vue
 
-  Debug = {}
+  Debug = []
 
   module Helpers
     using CoreRefinements
@@ -18,6 +18,7 @@ module Vue
       
       # Always pass a context when creating a VueRepository.
       def initialize(context)
+        Debug << self
         @context = context
       end
     
@@ -77,7 +78,6 @@ module Vue
       
       def initialize(name, **options)
         @name = name
-        Debug[name] = self
         #puts "VueObject created: #{name}, self: #{self}"
         initialize_options(**options)
       end
@@ -103,7 +103,11 @@ module Vue
         end
         
         #load_dot_vue if file_name
-        load_tilt_template if file_name
+        load_tilt_template if file_name && !tilt_template
+        
+        # We need this to discover and subcomponents, otherwise
+        # vue_app won't know about them until it's too late.
+        render_template
         
         @initialized = true
         #puts "VueObject initialized options: #{name}, self: #{self}"
@@ -123,7 +127,9 @@ module Vue
         self.tilt_template = context.load_template(file_name.to_sym, template_engine:template_engine)
       end
       
+      # Renders loaded tilt_template.
       def render_template(**locals)
+        puts "#{self.class} '#{name}' calling render_template with tilt_template: #{tilt_template&.file}, engine: #{template_engine}, locals: #{locals}"
         context.render_ruby_template(tilt_template, locals:locals, template_engine:template_engine)
       end
       
@@ -175,7 +181,7 @@ module Vue
       def type; 'component'; end
       
       # Renders the html block to replace ruby vue_component tags.
-      # NOTE: Locals may be useless here.
+      # TODO: Are locals used here? Do they work?
       def render(tag_name=nil, locals:{}, attributes:{}, &block)
         # Adds 'is' attribute to html vue-component element,
         # if the user specifies an alternate 'tag_name' (default tag_name is name-of-component).
@@ -234,6 +240,7 @@ module Vue
       
       # Returns JS string of all component object definitions.
       def components_js(**options)
+        puts "VueRoot#componenets_js called with components: #{components.map(&:name)}"
         components.map{|c| c.to_component_js(**options)}.join("\n")
       end
       
