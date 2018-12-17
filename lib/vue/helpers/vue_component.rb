@@ -19,9 +19,11 @@ module Vue
           attributes['is'] = name
         end
         
-        block_content = context.capture_html(root_name:root_name, **locals, &block) if block_given?
+        block_content = context.capture_html(root_name:root_name, locals:locals, &block) if block_given?
         
-        wrapper(:component_call_html, locals:locals,
+        # TODO: Are locals being passed properly here?
+        wrapper(:component_call_html,
+          locals:locals,
           name:name,
           tag_name:tag_name,
           el_name:(tag_name || name).to_s.kebabize,

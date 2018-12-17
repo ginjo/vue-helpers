@@ -22,15 +22,34 @@ module Vue
       ###  Under Construction
       # Renders the html block to replace ruby vue_app tags.
       #def render(tag_name=nil, locals:{}, attributes:{}, &block) # From vue_component
-      def render(_root_name=root_name, _locals:locals, **options, &block)
+      def render(locals:{}, **options, &block)
         
-        block_content = context.capture_html(root_name:_root_name, locals:_locals, **options, &block) if block_given?
+        block_content = context.capture_html(root_name:name, locals:locals, &block) if block_given?
         
-        wrapper(:component_call_html, locals:_locals,
-          name:_root_name,
-          el_name:(_root_name).to_s.kebabize,
-          block_content:block_content.to_s,
-          attributes_string:attributes.to_html_attributes
+        compiled_js = compile_app_js(locals:locals, **options)
+
+        root_script_output = case external_resource
+          # TODO: Handle external_resource:<some-string> if necessary.
+          #when String; vue_app_external(root_app, root_name, locals:locals, **options)
+          when true;
+            #vue_app_external(root_app, root_name, locals:locals, **options)  #->r{r==true && !template_literal}
+            key = secure_key
+            Vue::Helpers.cache_store[key] = compiled
+            callback_prefix = Vue::Helpers.callback_prefix
+            wrapper(:external_resource_html, callback_prefix:callback_prefix, key:key, **locals)
+          else
+            #vue_app_inline(root_app, root_name, locals:locals, **options)
+            wrapper(:inline_script_html, compiled:compiled_js, **locals)
+        end
+
+        root_script_output.prepend(components_x_template.to_s) unless template_literal
+        
+        # TODO: Are locals being passed properly here?
+        wrapper(:root_app_html,
+          root_name:name,
+          block_content:block_content,
+          root_script_output:root_script_output,
+          locals:locals,
         )
       end
             

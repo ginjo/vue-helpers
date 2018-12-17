@@ -22,7 +22,7 @@ module Vue
         root_name:        nil,
         file_name:        nil,
         template_engine:  nil,
-        locals:           {},
+        #locals:           {},
         
         # The loaded (but not rendered or parsed) dot-vue file as Tilt teplate.
         # See 'initialize_options()' below
@@ -61,7 +61,7 @@ module Vue
         initialize_options(**options)
       end
       
-      def initialize_options(**options)
+      def initialize_options(locals:{}, **options)
         return self unless options.size > 0 && !@initialized
 
         merged_options = defaults.dup.merge(options)

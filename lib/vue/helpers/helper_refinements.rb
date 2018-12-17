@@ -120,8 +120,8 @@ module Vue
         
         # TODO: Probbably need to pass root_name (and other options?) on to sub-components inside block.
         # Does vue even allow components in the block of a component call?
-        # NOTE: The *args and **locals are not currently used. They should be removed if they are not going to be used.
-        def capture_html(*args, root_name:Vue::Helpers.root_name, buffer_name:nil, **locals, &block)
+        # NOTE: The *args and locals:{} are not currently used. They should be removed if they are not going to be used.
+        def capture_html(*args, root_name:Vue::Helpers.root_name, buffer_name:nil, locals:{}, &block)
           #puts "CAPTURE_HTML args: #{args}, root_name: #{root_name}, buffer_name:#{buffer_name}, locals:#{locals}"
           return unless block_given?
           current_template = current_template_engine || Vue::Helpers.template_engine
