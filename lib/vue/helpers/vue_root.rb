@@ -51,30 +51,44 @@ module Vue
     #
     class VueObject
       
-      DEFAULTS = {
+      @defaults = {
         # Only what's necessary to load dot-vue file.
         name:             nil,
         root_name:        nil,
         file_name:        nil,
         template_engine:  nil,
+        locals:           {},
         
         # The loaded (but not rendered or parsed) dot-vue file as Tilt teplate.
         # See 'initialize_options()' below
         tilt_template:    nil,
         
-        # Vue-specific options for browser processing.
-        data:             {},
+        # Vue-specific options to be inserted in js object.
+        # Remember that component data must be a function in the js object.
+        data:             {}, 
         watch:            {},
+        computed:         {},
         
         # Utility
         repo:             nil
       }
       
-      attr_accessor *DEFAULTS.keys
+      
+      # Concatenates subclass defaults with master class defaults.
+      def self.defaults
+        super_defaults = superclass.singleton_class.method_defined?(__method__) ? superclass.defaults : (@defaults || {})
+        super_defaults.merge(@defaults || {})
+      end
+      
+      attr_accessor *defaults.keys
       attr_reader   :initialized
       
       
       ### Internal methods
+      
+      def defaults
+        self.class.defaults
+      end
       
       def initialize(name, **options)
         @name = name
@@ -85,7 +99,7 @@ module Vue
       def initialize_options(**options)
         return self unless options.size > 0 && !@initialized
 
-        merged_options = DEFAULTS.dup.merge(options)
+        merged_options = defaults.dup.merge(options)
         merged_options.each do |k,v|
           instance_variable_set("@#{k}", v) if v
         end
@@ -95,19 +109,15 @@ module Vue
           #puts "VueObject#initialize_options '#{name}' setting @template_engine (already: '#{@template_engine}'). to context.current_template_engine: #{context.current_template_engine}"
           #puts "Tilt.current_template: #{Tilt.current_template}"
           
-          # I think we only want @template_engine populated if there is actual current-template-engine.
-          # See todo note about current_template_engine method.
-          #@template_engine ||= context.current_template_engine
-          
           @file_name ||= @name
         end
         
         #load_dot_vue if file_name
-        load_tilt_template if file_name && !tilt_template
+        load_tilt_template if file_name   #&& !tilt_template
         
         # We need this to discover and subcomponents, otherwise
         # vue_app won't know about them until it's too late.
-        render_template
+        render_template(**locals)
         
         @initialized = true
         #puts "VueObject initialized options: #{name}, self: #{self}"
@@ -129,8 +139,10 @@ module Vue
       
       # Renders loaded tilt_template.
       def render_template(**locals)
-        puts "#{self.class} '#{name}' calling render_template with tilt_template: #{tilt_template&.file}, engine: #{template_engine}, locals: #{locals}"
-        context.render_ruby_template(tilt_template, locals:locals, template_engine:template_engine)
+        @rendered_template ||= (
+          puts "#{self.class} '#{name}' calling render_template with tilt_template: #{tilt_template&.file}, engine: #{template_engine}, locals: #{locals}"
+          context.render_ruby_template(tilt_template, locals:locals, template_engine:template_engine)
+        )
       end
       
       #   # Parses a rendered sfc file.
@@ -143,19 +155,25 @@ module Vue
       # Parses a rendered sfc file.
       # Returns [nil, template-as-html, nil, script-as-js].
       # Must be HTML (already rendered from ruby template).
-      def parse_template(**locals)
-        rendered_template = render_template(**locals)
-        rslt = {}
-        rslt[:template], rslt[:script] = rendered_template.to_s.match(/(.*<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a.values_at(2,4)
-        rslt
+      def parse_sfc(**locals)
+        @parsed_sfc ||= (
+          #rendered_template = render_template(**locals)
+          rslt = {}
+          rslt[:template], rslt[:script] = render_template(**locals).to_s.match(/(.*<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a.values_at(2,4)
+          rslt
+        )
       end
       
       def parsed_template(**locals)
-        parse_template(**locals)[:template]
+        @parsed_template ||= (
+          parse_sfc(**locals)[:template]
+        )
       end
       
       def parsed_script(**locals)
-        parse_template(**locals)[:script]
+        @parsed_script ||= (
+          parse_sfc(**locals)[:script]
+        )
       end
       
       def context
@@ -228,6 +246,30 @@ module Vue
     class VueRoot < VueObject
       def type; 'root'; end
       
+      @defaults = {
+        external_resource:  nil,
+        template_literal:   nil,
+        minify:             nil,
+        locals:             {},
+      }
+      
+      attr_accessor *defaults.keys
+      
+      ###  Under Construction
+      # Renders the html block to replace ruby vue_app tags.
+      #def render(tag_name=nil, locals:{}, attributes:{}, &block) # From vue_component
+      def render(_root_name=root_name, _locals:locals, **options, &block)
+        
+        block_content = context.capture_html(root_name:_root_name, locals:_locals, **options, &block) if block_given?
+        
+        wrapper(:component_call_html, locals:_locals,
+          name:_root_name,
+          el_name:(_root_name).to_s.kebabize,
+          block_content:block_content.to_s,
+          attributes_string:attributes.to_html_attributes
+        )
+      end
+            
       # Gets or creates a related component.
       def component(_name, **options)
         repo.component(_name, **options.merge({root_name:(name || root_name)}))

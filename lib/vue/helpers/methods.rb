@@ -77,16 +77,20 @@ module Vue
         
         puts "\n\nVue_component '#{name}' with args '#{local_variables.inject({}){ |c, i| c[i.to_s] = eval(i.to_s); c }}'"
         
-        # TODO: This should only pass args that are necessary to build the object.
-        # Locals should probably be passed here, but not tag_name or attributes or any other per-call params.
+        # This should only pass args that are necessary to build the base object.
+        # Tag-name and attributes are not relevant here.
         component = vue_root(root_name).component(name,
           root_name:root_name,
           file_name:file_name,
-          template_engine:template_engine
+          template_engine:template_engine,
+          locals:locals
         )
         
-        component_output = component.render(tag_name, locals:locals, attributes:attributes.merge(attitional_attributes), &block)
+        # Renders the per-call html block.
+        # Pass tag_name, attributes, locals, and block.
+        component_output = component.render(tag_name, attributes:attributes.merge(attitional_attributes), locals:locals, &block)
         
+        # Concat the content if block given, otherwise just return the content.
         if block_given?
           #puts "Vue_component concating content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"
           concat_content(component_output)
@@ -95,7 +99,7 @@ module Vue
           #puts "Vue_component returning content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"
           return component_output
         end
-      end  # vue_component()
+      end  # vue_component
     
       
       # TODO: These three methods should be refactored to better manage arg passing.
@@ -125,7 +129,9 @@ module Vue
         # Returns interpolated_wrapper.
         Vue::Helpers.external_resource_html.interpolate(callback_prefix: callback_prefix, key: key, **locals)
       end
-      
+
+      # Inserts Vue app-call block in html template.
+      # Builds vue html and js for return to browser.      
       def vue_app(root_name = Vue::Helpers.root_name,
           external_resource:  Vue::Helpers.external_resource,
           template_literal:   Vue::Helpers.template_literal,
@@ -138,7 +144,8 @@ module Vue
          puts "\n\nVue_app '#{root_name}' with args '#{local_variables.inject({}) { |c, i| c[i.to_s] = eval(i.to_s); c }}'"
         
         options.merge!(template_literal:template_literal)
-                
+        
+        # TODO: Do we need to pass ext-resource, template-literal, minify here?
         root_app = vue_root(root_name, **options)
         
         # TODO: Should this be moved to VueRoot instance, just like it is for VueComponent?
