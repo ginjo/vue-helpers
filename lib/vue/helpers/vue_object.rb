@@ -73,13 +73,13 @@ module Vue
       
       def initialize_options(locals:{}, **options)
         @repo ||= options.delete(:repo)
-        #puts "\n#{self.class.name}.initialize_options #{options.inspect}"
+        puts "\n#{self.class.name}.initialize_options #{options.inspect}, locals:#{locals.inspect}"
         return self unless options.size > 0 && !@initialized
-        puts "\n#{self.class.name}.initialize_options '#{name}': #{options.inspect}"
+        puts "\n#{self.class.name}.initialize_options '#{name}', #{options.inspect}, locals:#{locals.inspect}"
 
         merged_options = defaults.dup.merge(options)
         merged_options.each do |k,v|
-          puts "Setting ivar '#{k}' with '#{v}', was previously '#{instance_variable_get('@' + k.to_s)}'"
+          #puts "Setting ivar '#{k}' with '#{v}', was previously '#{instance_variable_get('@' + k.to_s)}'"
           instance_variable_set("@#{k}", v) if v && instance_variable_get("@#{k}").nil?  #!(v.respond_to?(:empty) && v.empty?)
         end
         
@@ -88,7 +88,7 @@ module Vue
         #load_dot_vue if file_name
         load_tilt_template if file_name   #&& !tilt_template
         
-        # We need this to discover and subcomponents, otherwise
+        # We need this to discover subcomponents, otherwise
         # vue_app won't know about them until it's too late.
         render_template(**locals)
         
@@ -106,10 +106,12 @@ module Vue
       end
       
       # Renders loaded tilt_template.
+      # TODO: Find a way to easily insert attributes like 'name', 'root_name', etc. into locals.
+      #   Or just insert the current vue object instance into the locals
       def render_template(**locals)
         @rendered_template ||= (
-          #puts "\n#{self.class.name} '#{name}' calling render_template with tilt_template: #{tilt_template&.file}, engine: #{template_engine}, locals: #{locals}"
-          context.render_ruby_template(tilt_template, locals:locals, template_engine:template_engine)
+          puts "\n#{self.class.name} '#{name}' calling render_template with tilt_template: #{tilt_template&.file}, engine: #{template_engine}, locals: #{locals}"
+          context.render_ruby_template(tilt_template, template_engine:template_engine, locals:locals.merge(vue_object:self))
         )
       end
       

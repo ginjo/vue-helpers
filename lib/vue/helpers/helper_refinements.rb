@@ -32,7 +32,7 @@ module Vue
         # TODO: Cleanup Load/Render template calls upstream, then cleanup these methods here.
         # These are a mess, since they were hacked together when their functionality was split up.
         def render_ruby_template(template_text_or_file, template_engine:nil, locals:{})
-          #puts "  Rendering ruby template '#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}' with locals:#{locals}, template_engine:#{template_engine}, Tilt.current_tempate: '#{Tilt.current_template}'"
+          puts "  Rendering ruby template '#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}' with locals:#{locals}, template_engine:#{template_engine}, Tilt.current_tempate: '#{Tilt.current_template}'"
           
           tilt_template = load_template(template_text_or_file, template_engine:nil)
         
@@ -54,10 +54,10 @@ module Vue
           #puts "  Loading template '#{template_text_or_file}' with engine: #{template_engine}"
           case template_text_or_file
           when Tilt::Template
-            #puts "  Loading existing tilt template '#{template_text_or_file}' from '#{template_text_or_file.file}' with engine: #{template_engine}"
+            puts "  Loading existing tilt template '#{template_text_or_file}' from '#{template_text_or_file.file}' with engine: #{template_engine}"
             template_text_or_file
           when Symbol
-            #puts "  Loading template from symbol '#{template_text_or_file}' with engine: #{template_engine}"
+            puts "  Loading template from symbol '#{template_text_or_file}' with engine: #{template_engine}"
             path = template_path(template_text_or_file, template_engine:template_engine)
             #puts "RENDER_ruby_template path-if-symbol: #{path}"
             if File.file?(path.to_s)
@@ -67,7 +67,7 @@ module Vue
               #puts "RENDER_ruby_template template-missing: #{template_text_or_file}"
             end           
           when String
-            #puts "  Loading template from string '#{template_text_or_file}' with engine: #{template_engine}"
+            puts "  Loading template from string '#{template_text_or_file}' with engine: #{template_engine}"
             Tilt.template_for(template_engine || current_template_engine).new(nil, 1, outvar: Vue::Helpers.vue_outvar){template_text_or_file}
           end
         rescue

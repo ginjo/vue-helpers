@@ -86,7 +86,7 @@ module Vue
         
         options.merge!(template_literal:template_literal, external_resource:external_resource, minify:minify)
         
-        root_app = vue_root(root_name, **options)
+        root_app = vue_root(root_name, locals:locals, **options)
         
         root_output = root_app.render(locals:locals, **options, &block)
                 

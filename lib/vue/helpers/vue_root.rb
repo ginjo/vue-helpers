@@ -12,6 +12,7 @@ module Vue
       def type; 'root'; end
       
       @defaults = {
+        #app_name:           nil,
         external_resource:  nil,
         template_literal:   nil,
         register_local:     nil,
@@ -53,8 +54,12 @@ module Vue
           root_name:name,
           block_content:block_content,
           root_script_output:root_script_output,
-          locals:locals,
+          **locals
         )
+      end
+      
+      def app_name
+        @app_name || js_var_name
       end
             
       # Gets or creates a related component.
@@ -65,6 +70,10 @@ module Vue
       # Selects all related components.
       def components
         repo.select{|k,v| v.type == 'component' && v.root_name == name}.values
+      end
+      
+      def component_names
+        components.map{|c| c.js_var_name}.join(', ')
       end
       
       # Returns JS string of all component object definitions.
@@ -91,12 +100,15 @@ module Vue
           # &block
         )
         
+        # TODO: Make these locals accessible from anywhere within the root instance,
+        #   as we also need them for the 'render' method.
         locals = {
           root_name:        name.to_s.kebabize,
-          app_name:         (options[:app_name] || js_var_name),
+          #app_name:         (options[:app_name] || js_var_name),
+          app_name:         js_var_name,
           file_name:        file_name,
           template_engine:  template_engine,
-          components:       components.map{|c| c.js_var_name}.join(', '),
+          components:       component_names,
           vue_data_json:    data.to_json
         }.merge!(locals)
         
