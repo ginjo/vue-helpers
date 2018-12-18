@@ -99,14 +99,6 @@ module Vue
         #puts "VueObject initialized options: #{name}, self: #{self}"
         self
       end
-
-      #   # Renders and parses sfc file.
-      #   # Used to be 'render_sfc_file'.
-      #   # TODO: Don't render dot-vue, just load the Tilt template.
-      #   def load_dot_vue(locals:{})
-      #     self.rendered_dot_vue = context.render_ruby_template(file_name.to_sym, locals:locals, template_engine:template_engine)
-      #     parse_vue_sfc(rendered_dot_vue.to_s)
-      #   end
       
       # Loads a dot-vue into a tilt template, but doesn't render or parse it.
       def load_tilt_template
@@ -120,13 +112,6 @@ module Vue
           context.render_ruby_template(tilt_template, locals:locals, template_engine:template_engine)
         )
       end
-      
-      #   # Parses a rendered sfc file.
-      #   # Returns [nil, template-as-html, nil, script-as-js].
-      #   # Must be HTML (already rendered from ruby template).
-      #   def parse_vue_sfc(template_text=rendered_dot_vue)
-      #     a,self.parsed_template,c,self.parsed_script = template_text.to_s.match(/(.*<template>(.*)<\/template>)*.*(<script>(.*)<\/script>)/m).to_a[1..-1]
-      #   end
       
       # Parses a rendered sfc file.
       # Returns [nil, template-as-html, nil, script-as-js].

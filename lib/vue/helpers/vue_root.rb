@@ -90,26 +90,12 @@ module Vue
           # # Block may not be needed here, it's handled in 'vue_app'.
           # &block
         )
-                
-        #app_js = ''
-        
-        #components = vue_object_list.collect(){|k,v| v if v.type == 'component' && v.root_name == name}.compact
-        
-        # if components.size > 0
-        #   components.each do |cmp|
-        #     app_js << cmp.to_component_js
-        #     app_js << ";\n"
-        #   end            
-        # else
-        #   return
-        # end
         
         locals = {
           root_name:        name.to_s.kebabize,
           app_name:         (options[:app_name] || js_var_name),
           file_name:        file_name,
           template_engine:  template_engine,
-          #components:       (components.keys.map{|k| k.to_s.camelize}.join(', ') if register_local),
           components:       components.map{|c| c.js_var_name}.join(', '),
           vue_data_json:    data.to_json
         }.merge!(locals)
@@ -118,10 +104,8 @@ module Vue
         #rendered_root_sfc_js = \
         #app_js << (
         components_js(locals:{}, **options) << "\n" << (
-          #render_sfc_file(file_name:file_name.to_sym, template_engine:template_engine, locals:locals).to_a[1] ||
           parsed_script(locals) ||
           wrapper(:root_object_js, locals:locals, **options)
-          #Vue::Helpers.root_object_js.interpolate(**locals)
         )
         
         #app_js << rendered_root_sfc_js

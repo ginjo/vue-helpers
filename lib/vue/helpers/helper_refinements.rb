@@ -89,9 +89,6 @@ module Vue
         #   Is this already handled here?
         def template_path(name, template_engine:nil)   #current_template_engine)
           template_engine ||= '*'
-          #tp = File.join(Dir.getwd, Vue::Helpers.views_path, "#{name.to_s}.vue.#{template_engine}")
-          #puts "Template_path generated for '#{name}': #{tp}"
-          #tp
           #puts "TEMPLATE_path searching with name: #{name}, template_engine: #{template_engine}"
           ([Vue::Helpers.views_path].flatten.uniq.compact || Dir.getwd).each do |start_path|
             #puts "TEMPLATE_path searching views-path: #{start_path}"
@@ -127,7 +124,6 @@ module Vue
           current_template = current_template_engine || Vue::Helpers.template_engine
           #puts "CAPTURE_HTML current_template: #{current_template}."
           
-          #load_template(
           case current_template.to_s
           when /erb/
             #puts "Capturing ERB block."
@@ -143,10 +139,6 @@ module Vue
             #puts "Capturing generic template block."
             yield(*args)
           end
-          #   ,
-          #   
-          #   template_engine:current_template
-          # ).render(self, **locals)
           
         end
         
@@ -164,13 +156,7 @@ module Vue
           end
         end
         
-        # # TODO: This should be a Vue::Helpers or Utilities module method.
-        # def secure_key
-        #   SecureRandom.urlsafe_base64(32)
-        # end
-        
       end # refine Methods
-      
     end # HelperRefinements
     
     using HelperRefinements
