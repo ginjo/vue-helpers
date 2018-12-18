@@ -16,7 +16,7 @@ module Vue
         template_literal:   nil,
         register_local:     nil,
         minify:             nil,
-        locals:             {},
+        #locals:             {},
       }
       
       attr_accessor *defaults.keys
