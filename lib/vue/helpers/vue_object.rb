@@ -22,7 +22,7 @@ module Vue
         root_name:        nil,
         file_name:        nil,
         template_engine:  nil,
-        #locals:           {},
+        #locals:          {},
         
         # The loaded (but not rendered or parsed) dot-vue file as Tilt teplate.
         # See 'initialize_options()' below
@@ -45,7 +45,7 @@ module Vue
         super_defaults.merge(@defaults || {})
       end
       
-      attr_accessor *defaults.keys
+      attr_accessor :repo, *defaults.keys
       attr_reader   :initialized
       
       
@@ -55,6 +55,16 @@ module Vue
         self.class.defaults
       end
       
+      # For debugging.
+      def print_ivars
+        puts "\nIVARS:"
+        instance_variables.each do |v|
+          unless v.to_s[/repo/i]
+            puts "#{v}: #{instance_variable_get(v)}"
+          end
+        end
+      end
+      
       def initialize(name, **options)
         @name = name
         #puts "VueObject created: #{name}, self: #{self}"
@@ -62,20 +72,18 @@ module Vue
       end
       
       def initialize_options(locals:{}, **options)
+        @repo ||= options.delete(:repo)
+        #puts "\n#{self.class.name}.initialize_options #{options.inspect}"
         return self unless options.size > 0 && !@initialized
+        puts "\n#{self.class.name}.initialize_options '#{name}': #{options.inspect}"
 
         merged_options = defaults.dup.merge(options)
         merged_options.each do |k,v|
-          instance_variable_set("@#{k}", v) if v
+          puts "Setting ivar '#{k}' with '#{v}', was previously '#{instance_variable_get('@' + k.to_s)}'"
+          instance_variable_set("@#{k}", v) if v && instance_variable_get("@#{k}").nil?  #!(v.respond_to?(:empty) && v.empty?)
         end
         
-        # TODO: Do this (handle dynamic defaults) for other parameters too, like file_name, app_name, etc.
-        if context
-          #puts "VueObject#initialize_options '#{name}' setting @template_engine (already: '#{@template_engine}'). to context.current_template_engine: #{context.current_template_engine}"
-          #puts "Tilt.current_template: #{Tilt.current_template}"
-          
-          @file_name ||= @name
-        end
+        @file_name ||= @name
         
         #load_dot_vue if file_name
         load_tilt_template if file_name   #&& !tilt_template
@@ -83,6 +91,9 @@ module Vue
         # We need this to discover and subcomponents, otherwise
         # vue_app won't know about them until it's too late.
         render_template(**locals)
+        
+        #puts "\n#{self.class.name} initialized."
+        print_ivars
         
         @initialized = true
         #puts "VueObject initialized options: #{name}, self: #{self}"
@@ -105,7 +116,7 @@ module Vue
       # Renders loaded tilt_template.
       def render_template(**locals)
         @rendered_template ||= (
-          puts "#{self.class} '#{name}' calling render_template with tilt_template: #{tilt_template&.file}, engine: #{template_engine}, locals: #{locals}"
+          #puts "\n#{self.class.name} '#{name}' calling render_template with tilt_template: #{tilt_template&.file}, engine: #{template_engine}, locals: #{locals}"
           context.render_ruby_template(tilt_template, locals:locals, template_engine:template_engine)
         )
       end

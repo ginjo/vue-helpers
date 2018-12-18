@@ -1,3 +1,4 @@
+require 'securerandom'
 require_relative 'utilities'
 require_relative 'helper_refinements'
 require_relative 'vue_object'
@@ -13,6 +14,7 @@ module Vue
       @defaults = {
         external_resource:  nil,
         template_literal:   nil,
+        register_local:     nil,
         minify:             nil,
         locals:             {},
       }
@@ -23,6 +25,8 @@ module Vue
       # Renders the html block to replace ruby vue_app tags.
       #def render(tag_name=nil, locals:{}, attributes:{}, &block) # From vue_component
       def render(locals:{}, **options, &block)
+        #puts "\nVueRoot#render with locals: #{locals}, options: #{options}, self: #{self}"
+        #print_ivars
         
         block_content = context.capture_html(root_name:name, locals:locals, &block) if block_given?
         
@@ -33,8 +37,8 @@ module Vue
           #when String; vue_app_external(root_app, root_name, locals:locals, **options)
           when true;
             #vue_app_external(root_app, root_name, locals:locals, **options)  #->r{r==true && !template_literal}
-            key = secure_key
-            Vue::Helpers.cache_store[key] = compiled
+            key = SecureRandom.urlsafe_base64(32)
+            Vue::Helpers.cache_store[key] = compiled_js
             callback_prefix = Vue::Helpers.callback_prefix
             wrapper(:external_resource_html, callback_prefix:callback_prefix, key:key, **locals)
           else
@@ -65,7 +69,7 @@ module Vue
       
       # Returns JS string of all component object definitions.
       def components_js(**options)
-        puts "VueRoot#componenets_js called with components: #{components.map(&:name)}"
+        #puts "\nVueRoot#componenets_js called with components: #{components.map(&:name)}"
         components.map{|c| c.to_component_js(**options)}.join("\n")
       end
       

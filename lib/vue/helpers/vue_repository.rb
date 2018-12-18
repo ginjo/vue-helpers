@@ -28,7 +28,7 @@ module Vue
       def get_or_create(klas, name, **options)
         obj = fetch(name){|n| self[name] = klas.new(name, **options.merge({repo:self}))}
         obj.repo ||= self
-        obj.initialize_options(**options) unless obj.initialized
+        obj.initialize_options(**options)
         obj
       end
       
@@ -36,7 +36,7 @@ module Vue
       def root(name, **options)
         get_or_create(VueRoot, name, **options)
       end
-      alias_method :[], :root
+      #alias_method :[], :root
       
       # Gets or creates a VueComponent instance.
       def component(name, **options)

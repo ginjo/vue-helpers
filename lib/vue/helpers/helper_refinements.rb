@@ -164,10 +164,10 @@ module Vue
           end
         end
         
-        # TODO: This should be a Vue::Helpers or Utilities module method.
-        def secure_key
-          SecureRandom.urlsafe_base64(32)
-        end
+        # # TODO: This should be a Vue::Helpers or Utilities module method.
+        # def secure_key
+        #   SecureRandom.urlsafe_base64(32)
+        # end
         
       end # refine Methods
       
