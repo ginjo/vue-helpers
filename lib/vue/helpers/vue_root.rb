@@ -95,19 +95,21 @@ module Vue
       # If template_literal is false, only the js object definitions are included.
       # In that case, the vue template html is left to be rendered in x-template blocks.
       # TODO: Clean up args, especially locals handling.
-      def compile_app_js(locals:{}, **options  # generic opts placeholder until we get the args/opts flow worked out.
-          # root_name = Vue::Helpers.root_name,
-          # file_name:root_name,
-          # app_name:root_name.camelize, # Maybe obsolete, see js_var_name
-          # #template_engine:context.current_template_engine,
-          # register_local: Vue::Helpers.register_local,
-          # minify: Vue::Helpers.minify,
-          # # Block may not be needed here, it's handled in 'vue_app'.
-          # &block
-        )
+      def compile_app_js(locals:{}, **options)
+        ### Above is generic opts placeholder until we get the args/opts flow worked out.
+        ### It used to bee this:
+        # root_name = Vue::Helpers.root_name,
+        # file_name:root_name,
+        # app_name:root_name.camelize, # Maybe obsolete, see js_var_name
+        # #template_engine:context.current_template_engine,
+        # register_local: Vue::Helpers.register_local,
+        # minify: Vue::Helpers.minify,
+        # # Block may not be needed here, it's handled in 'vue_app'.
+        # &block
         
         # TODO: Make these locals accessible from anywhere within the root instance,
         #   as we also need them for the 'render' method.
+        #   Should this just be moved to 'render' method?
         locals = {
           root_name:        name.to_s.kebabize,
           #app_name:         (options[:app_name] || js_var_name),
@@ -121,20 +123,23 @@ module Vue
         # {block_content:rendered_block, vue_sfc:{name:name, vue_template:template, vue_script:script}}
         #rendered_root_sfc_js = \
         #app_js << (
-        components_js(locals:{}, **options) << "\n" << (
+        output = components_js(locals:{}, **options) << "\n" << (
           parsed_script(locals) ||
           wrapper(:root_object_js, locals:locals, **options)
         )
         
         #app_js << rendered_root_sfc_js
         
-        # if minify
-        #   #extra_spaces_removed = app_js.gsub(/(^\s+)|(\s+)|(\s+$)/){|m| {$1 => "\\\n", $2 => ' ', $3 => "\\\n"}[m]}
-        #   Uglifier.compile(app_js, harmony:true).gsub(/\s{2,}/, ' ')
-        # else
-        #   app_js
-        # end
-        #app_js << "; App = VueApp;"
+        output = if minify || options[:minify]
+          #extra_spaces_removed = app_js.gsub(/(^\s+)|(\s+)|(\s+$)/){|m| {$1 => "\\\n", $2 => ' ', $3 => "\\\n"}[m]}
+          Uglifier.compile(output, harmony:true).gsub(/\s{2,}/, ' ')
+        else
+          output
+        end
+        
+        # Should we have an append_output option that takes a string of js?
+        #output << "; App = VueApp;"
+        
       end  # compile_app_js
       
     end  # VueRoot

@@ -41,6 +41,8 @@ module Vue
           file_name:nil,
           locals:{},
           template_engine:nil,
+          
+          # TODO: Should the catchall be this? or some other kind of option set?
           **attitional_attributes,
           &block
         )
@@ -50,10 +52,10 @@ module Vue
         # This should only pass args that are necessary to build the base object.
         # Tag-name and attributes are not relevant here.
         component = vue_root(root_name).component(name,
-          root_name:root_name,
-          file_name:file_name,
-          template_engine:template_engine,
-          locals:locals
+          root_name:        root_name,
+          file_name:        file_name,
+          template_engine:  template_engine,
+          locals:           locals
         )
         
         # Renders the per-call html block.
@@ -70,9 +72,14 @@ module Vue
         end
       end  # vue_component
 
+
       # Inserts Vue app-call block in html template.
       # Builds vue html and js for return to browser.
-      # TODO: A lot of these params can now be moved downstream into the VueRoot instance.    
+      # TODO: Can some of these params be moved downstream into the VueRoot instance?
+      #   Or can some of these be passed through **options downstream, like 'register_local'?
+      #   Note that you don't see it mentioned in this method. Should it be here?
+      #
+      # Returns (or concats if block given) rendered html and js.
       def vue_app(root_name = Vue::Helpers.root_name,
           external_resource:  Vue::Helpers.external_resource,
           template_literal:   Vue::Helpers.template_literal,
@@ -84,7 +91,11 @@ module Vue
         
         puts "\nVue_app '#{root_name}' with args '#{local_variables.inject({}) { |c, i| c[i.to_s] = eval(i.to_s); c }}'"
         
-        options.merge!(template_literal:template_literal, external_resource:external_resource, minify:minify)
+        options.merge!(
+          template_literal: template_literal,
+          external_resource: external_resource,
+          minify: minify
+        )
         
         root_app = vue_root(root_name, locals:locals, **options)
         
