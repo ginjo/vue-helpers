@@ -50,12 +50,16 @@ module Vue
         root_script_output.prepend(components_x_template.to_s) unless template_literal
         
         # TODO: Are locals being passed properly here?
-        wrapper(:root_app_html,
-          root_name:name,
-          block_content:block_content,
-          root_script_output:root_script_output,
-          **locals
-        )
+        if block_given?
+          wrapper(:root_app_html,
+            root_name:name,
+            block_content:block_content,
+            root_script_output:root_script_output,
+            **locals
+          )
+        else
+          root_script_output
+        end
       end
       
       def app_name
@@ -87,7 +91,9 @@ module Vue
         components.map{|c| c.get_x_template}.join("\n")
       end      
       
-      # Compiles js output for entire vue-app for this root object.
+      # Compiles js output (components & root) for entire vue-app for this root object.
+      # If template_literal is false, only the js object definitions are included.
+      # In that case, the vue template html is left to be rendered in x-template blocks.
       # TODO: Clean up args, especially locals handling.
       def compile_app_js(locals:{}, **options  # generic opts placeholder until we get the args/opts flow worked out.
           # root_name = Vue::Helpers.root_name,
