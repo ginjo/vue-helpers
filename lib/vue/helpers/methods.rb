@@ -26,10 +26,7 @@ module Vue
         @vue_repository
       end
       
-      #def vue_root(root_name = Vue::Helpers.root_name, **options)
       def vue_root(root_name=nil, **options)
-        # @vue_root ||= {}
-        # @vue_root[root_name] ||= VueRoot.new(root_name)
         vue_repository.root(root_name, **options)
       end
   
@@ -44,7 +41,7 @@ module Vue
           &block
         )
         
-        puts "\nVue_component '#{name}' with local-vars '#{local_variables.inject({}){ |c, i| c[i.to_s] = eval(i.to_s); c }}'"
+        #puts "\nvue_component '#{name}' with local-vars '#{local_variables.inject({}){ |c, i| c[i.to_s] = eval(i.to_s); c }}'"
         
         # This should only pass args that are necessary to build the base object.
         # Tag-name and attributes are not relevant here.
@@ -52,7 +49,6 @@ module Vue
         
         # Renders the per-call html block.
         # Pass tag_name, attributes, locals, and block.
-        #component_output = component.render(tag_name, attributes:attributes.merge(attitional_attributes), locals:locals, &block)
         component_output = component.render(tag_name, locals:locals, attributes:attributes, &block)
         
         # Concat the content if block given, otherwise just return the content.
@@ -68,9 +64,6 @@ module Vue
 
       # Inserts Vue app-call block in html template.
       # Builds vue html and js for return to browser.
-      # TODO: Can some of these params be moved downstream into the VueRoot instance?
-      #   Or can some of these be passed through **options downstream, like 'register_local'?
-      #   Note that you don't see it mentioned in this method. Should it be here?
       #
       # Returns (or concats if block given) rendered html and js.
       def vue_app(root_name = Vue::Helpers.root_name,
@@ -79,19 +72,10 @@ module Vue
           &block
         )
         
-        puts "\nVue_app '#{root_name}' with local-vars '#{local_variables.inject({}) { |c, i| c[i.to_s] = eval(i.to_s); c }}'"
-        
-        # options.merge!(
-        #   template_literal: template_literal,
-        #   external_resource: external_resource,
-        #   minify: minify
-        # )
+        #puts "\nvue_app '#{root_name}' with local-vars '#{local_variables.inject({}) { |c, i| c[i.to_s] = eval(i.to_s); c }}'"
         
         root_app = vue_root(root_name, locals:locals, **options)
-        require 'yaml'
-        puts root_app.to_yaml
         
-        #root_output = root_app.render(locals:locals, **options, &block)
         root_output = root_app.render(locals:locals, &block)
                 
         if block_given?

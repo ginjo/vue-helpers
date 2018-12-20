@@ -77,7 +77,7 @@ module Vue
         #puts "\n#{self.class.name}.initialize_options '#{name}' #{options.inspect}, locals:#{locals.inspect}"
         return self unless options.size > 0 && !@initialized
         locals = options.delete(:locals) || {}
-        puts "\n#{self.class.name}.initialize_options '#{name}', #{options.inspect}, locals:#{locals.inspect}"
+        #puts "\n#{self.class.name}.initialize_options '#{name}', #{options.inspect}, locals:#{locals.inspect}"
 
         merged_options = defaults.dup.merge(options)
         merged_options.each do |k,v|
@@ -95,7 +95,7 @@ module Vue
         render_template(**locals)
         
         #puts "\n#{self.class.name} initialized."
-        print_ivars
+        #print_ivars
         
         @initialized = true
         #puts "VueObject initialized options: #{name}, self: #{self}"

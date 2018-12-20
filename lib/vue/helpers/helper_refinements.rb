@@ -42,7 +42,7 @@ module Vue
             #puts "  Rendering ruby template '#{template_text_or_file}' from '#{tilt_template.file}' with locals:#{locals}, template_engine:#{template_engine}, Tilt.current_tempate: '#{Tilt.current_template}'"
             tilt_template.render(self, **locals)
           else
-            puts "  Render_ruby_template bypassing rendering for '#{template_text_or_file}', since '#{tilt_template}' is not a Tilt::Template"
+            #puts "  Render_ruby_template bypassing rendering for '#{template_text_or_file}', since '#{tilt_template}' is not a Tilt::Template"
             tilt_template
           end
           
