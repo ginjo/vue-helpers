@@ -13,10 +13,11 @@ module Vue
       
       @defaults = {
         #app_name:           nil,
-        external_resource:  nil,
-        template_literal:   nil,
-        register_local:     nil,
-        minify:             nil,
+        name:                Vue::Helpers.root_name,
+        external_resource:   Vue::Helpers.external_resource,
+        template_literal:    Vue::Helpers.template_literal,
+        register_local:      Vue::Helpers.register_local,
+        minify:              Vue::Helpers.minify,
         #locals:             {},
       }
       
@@ -25,13 +26,14 @@ module Vue
       ###  Under Construction
       # Renders the html block to replace ruby vue_app tags.
       #def render(tag_name=nil, locals:{}, attributes:{}, &block) # From vue_component
-      def render(locals:{}, **options, &block)
-        #puts "\nVueRoot#render with locals: #{locals}, options: #{options}, self: #{self}"
+      #def render(locals:{}, **options, &block)
+      def render(locals:{}, &block)
+        #puts "\nVueRoot#render with locals: #{locals}, self: #{self}"
         #print_ivars
         
         block_content = context.capture_html(root_name:name, locals:locals, &block) if block_given?
         
-        compiled_js = compile_app_js(locals:locals, **options)
+        compiled_js = compile_app_js(locals:locals)   #, **options)
 
         root_script_output = case external_resource
           # TODO: Handle external_resource:<some-string> if necessary.
@@ -47,14 +49,14 @@ module Vue
             wrapper(:inline_script_html, compiled:compiled_js, **locals)
         end
 
-        root_script_output.prepend(components_x_template.to_s) unless template_literal
+        root_script_output.prepend(components_x_template(locals).to_s) unless template_literal
         
         # TODO: Are locals being passed properly here?
         if block_given?
           wrapper(:root_app_html,
-            root_name:name,
-            block_content:block_content,
-            root_script_output:root_script_output,
+            root_name:           name,
+            block_content:       block_content,
+            root_script_output:  root_script_output,
             **locals
           )
         else
@@ -67,8 +69,8 @@ module Vue
       end
             
       # Gets or creates a related component.
-      def component(_name, **options)
-        repo.component(_name, **options.merge({root_name:(name || root_name)}))
+      def component(_name, **component_options)
+        repo.component(_name, **component_options.merge({root_name:(root_name || name)}))
       end
       
       # Selects all related components.
@@ -81,21 +83,21 @@ module Vue
       end
       
       # Returns JS string of all component object definitions.
-      def components_js(**options)
+      def components_js(**component_options)
         #puts "\nVueRoot#componenets_js called with components: #{components.map(&:name)}"
-        components.map{|c| c.to_component_js(**options)}.join("\n")
+        components.map{|c| c.to_component_js(**component_options)}.join("\n")
       end
       
       # Returns HTML string of component vue templates in x-template format.
-      def components_x_template
-        components.map{|c| c.get_x_template}.join("\n")
+      def components_x_template(**locals)
+        components.map{|c| c.get_x_template(locals)}.join("\n")
       end      
       
       # Compiles js output (components & root) for entire vue-app for this root object.
       # If template_literal is false, only the js object definitions are included.
       # In that case, the vue template html is left to be rendered in x-template blocks.
       # TODO: Clean up args, especially locals handling.
-      def compile_app_js(locals:{}, **options)
+      def compile_app_js(locals:{})  #, **options)
         ### Above is generic opts placeholder until we get the args/opts flow worked out.
         ### It used to bee this:
         # root_name = Vue::Helpers.root_name,
@@ -123,14 +125,15 @@ module Vue
         # {block_content:rendered_block, vue_sfc:{name:name, vue_template:template, vue_script:script}}
         #rendered_root_sfc_js = \
         #app_js << (
-        output = components_js(locals:{}, **options) << "\n" << (
+        #output = components_js(locals:{}, **options) << "\n" << (
+        output = components_js(locals:{}) << "\n" << (
           parsed_script(locals) ||
-          wrapper(:root_object_js, locals:locals, **options)
+          wrapper(:root_object_js, **locals)  #, **options)
         )
         
         #app_js << rendered_root_sfc_js
         
-        output = if minify || options[:minify]
+        output = if minify
           #extra_spaces_removed = app_js.gsub(/(^\s+)|(\s+)|(\s+$)/){|m| {$1 => "\\\n", $2 => ' ', $3 => "\\\n"}[m]}
           Uglifier.compile(output, harmony:true).gsub(/\s{2,}/, ' ')
         else

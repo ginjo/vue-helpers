@@ -71,9 +71,10 @@ module Vue
         initialize_options(**options)
       end
       
-      def initialize_options(locals:{}, **options)
+      def initialize_options(**options)
         @repo ||= options.delete(:repo)
-        puts "\n#{self.class.name}.initialize_options #{options.inspect}, locals:#{locals.inspect}"
+        locals = options.delete(:locals) || {}
+        #puts "\n#{self.class.name}.initialize_options '#{name}' #{options.inspect}, locals:#{locals.inspect}"
         return self unless options.size > 0 && !@initialized
         puts "\n#{self.class.name}.initialize_options '#{name}', #{options.inspect}, locals:#{locals.inspect}"
 
@@ -110,8 +111,8 @@ module Vue
       #   Or just insert the current vue object instance into the locals
       def render_template(**locals)
         @rendered_template ||= (
-          puts "\n#{self.class.name} '#{name}' calling render_template with tilt_template: #{tilt_template&.file}, engine: #{template_engine}, locals: #{locals}"
-          context.render_ruby_template(tilt_template, template_engine:template_engine, locals:locals.merge(vue_object:self))
+          #puts "\n#{self.class.name} '#{name}' calling render_template with tilt_template: #{tilt_template&.file}, engine: #{template_engine}, locals: #{locals}"
+          context.render_ruby_template(tilt_template, template_engine:template_engine, locals:locals.merge(vo:self, vue_object:self))
         )
       end
       
@@ -147,8 +148,9 @@ module Vue
       ### Called from user-space by vue_root, vue_app, vue_compoenent.
 
       # Gets a defined wrapper, and interpolates it with the given locals & options.
-      def wrapper(wrapper_name, locals:{}, **options)
-        Vue::Helpers.send(wrapper_name).interpolate(**options.merge(locals))
+      def wrapper(wrapper_name, **locals)   #, **wrapper_options)
+        #Vue::Helpers.send(wrapper_name).interpolate(**wrapper_options.merge(locals))
+        Vue::Helpers.send(wrapper_name).interpolate(locals)
       end
       
       def js_var_name

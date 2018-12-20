@@ -1,7 +1,8 @@
 require "vue/helpers/version"
 
-require_relative 'helpers/methods'
-require_relative 'helpers/server'
+# See below...
+# require_relative 'helpers/methods'
+# require_relative 'helpers/server'
 
 module Vue
   module Helpers
@@ -40,3 +41,6 @@ module Vue
     
   end 
 end
+
+require_relative 'helpers/methods'
+require_relative 'helpers/server'

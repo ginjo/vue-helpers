@@ -10,6 +10,10 @@ module Vue
     class VueComponent < VueObject
       def type; 'component'; end
       
+      @defaults = {
+        root_name: Vue::Helpers.root_name
+      }
+      
       # Renders the html block to replace ruby vue_component tags.
       # TODO: Are locals used here? Do they work?
       def render(tag_name=nil, locals:{}, attributes:{}, &block)
@@ -23,18 +27,18 @@ module Vue
         
         # TODO: Are locals being passed properly here?
         wrapper(:component_call_html,
-          locals:locals,
           name:name,
           tag_name:tag_name,
           el_name:(tag_name || name).to_s.kebabize,
           block_content:block_content.to_s,
-          attributes_string:attributes.to_html_attributes
+          attributes_string:attributes.to_html_attributes,
+          **locals
         )
       end
   
       # Builds js output string.
       # TODO: Follow this backwards/upstream to determine if parsed_template, parsed_script, and locals are being handled correctly.
-      def to_component_js(register_local:Vue::Helpers.register_local, template_literal:Vue::Helpers.template_literal, locals:{}, **options)
+      def to_component_js(register_local:Vue::Helpers.register_local, template_literal:Vue::Helpers.template_literal, locals:{})  #, **options)
           # The above **options are not used yet, but need somewhere to catch extra stuff.
           template_spec = template_literal ? "\`#{parsed_template(locals).to_s.escape_backticks}\`" : "'##{name}-template'"
           js_output = register_local \
@@ -52,7 +56,7 @@ module Vue
       
       # TODO: Follow this backwards/upstream to determine if parsed_template, parsed_script, and locals are being handled correctly.
       def get_x_template(**locals)
-        wrapper(:x_template_html, name:name, template:parsed_template(locals))
+        wrapper(:x_template_html, name:name, template:parsed_template(locals), **locals)
       end
       
     end # VueComponent

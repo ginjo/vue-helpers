@@ -26,14 +26,15 @@ module Vue
     
       # Master get_or_create for any object in the repository.
       def get_or_create(klas, name, **options)
-        obj = fetch(name){|n| self[name] = klas.new(name, **options.merge({repo:self}))}
+        obj = fetch(name){ |n| self[name] = klas.new(name, **options.merge({repo:self})) }
         obj.repo ||= self
         obj.initialize_options(**options)
         obj
       end
       
       # Gets or creates a VueRoot instance.
-      def root(name, **options)
+      def root(name=nil, **options)
+        name ||= Vue::Helpers.root_name
         get_or_create(VueRoot, name, **options)
       end
       #alias_method :[], :root
