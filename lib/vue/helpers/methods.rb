@@ -44,7 +44,7 @@ module Vue
           &block
         )
         
-        puts "\nVue_component '#{name}' with args '#{local_variables.inject({}){ |c, i| c[i.to_s] = eval(i.to_s); c }}'"
+        puts "\nVue_component '#{name}' with local-vars '#{local_variables.inject({}){ |c, i| c[i.to_s] = eval(i.to_s); c }}'"
         
         # This should only pass args that are necessary to build the base object.
         # Tag-name and attributes are not relevant here.
@@ -79,7 +79,7 @@ module Vue
           &block
         )
         
-        puts "\nVue_app '#{root_name}' with args '#{local_variables.inject({}) { |c, i| c[i.to_s] = eval(i.to_s); c }}'"
+        puts "\nVue_app '#{root_name}' with local-vars '#{local_variables.inject({}) { |c, i| c[i.to_s] = eval(i.to_s); c }}'"
         
         # options.merge!(
         #   template_literal: template_literal,
@@ -88,6 +88,8 @@ module Vue
         # )
         
         root_app = vue_root(root_name, locals:locals, **options)
+        require 'yaml'
+        puts root_app.to_yaml
         
         #root_output = root_app.render(locals:locals, **options, &block)
         root_output = root_app.render(locals:locals, &block)
