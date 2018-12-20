@@ -17,7 +17,7 @@ The Vue-helpers gem officially supports Rails, Sinatra, and Rack applications us
 
 ## Requirements
 
-* Ruby 2.3 or later. Earlier versions of Ruby may work but are not tested.
+* Ruby 2.4 or later. Earlier versions of Ruby may work but are not tested.
 
 * Vuejs 2.0 or greater. Earlier versions of Vuejs may work but are not tested.
 
