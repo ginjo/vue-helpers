@@ -1,6 +1,6 @@
 # Vue::Helpers
 
-Vue-helpers is a Ruby gem that provides helper methods for adding Vuejs functionality to your Ruby applications. Vue-helpers makes it easy to build Vue components and applications without getting mired in the technicalities of how to package and deploy, and all without requiring a backend Javascript engine. Vue-helpers can assist with the following tasks.
+Vue-helpers is a Ruby gem that provides helper methods for adding [Vuejs](https://vuejs.org) functionality to your Ruby applications. Vue-helpers makes it easy to build Vue components and applications without getting mired in the technicalities of how to package and deploy, and all without requiring a backend Javascript engine. Vue-helpers can assist with the following tasks.
 
 * Parse single-file-component.vue files.
 * Automate vue component and root boilerplate code.
@@ -38,6 +38,10 @@ Or install it yourself as:
 
     $ gem install vue-helpers
     
+Then make sure Vuejs is loaded into your browser:
+
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    
 #### Optional Requirements
 
 If you want to serve Vuejs javascript to your clients using external script resources,
@@ -49,9 +53,9 @@ add the ```uglifier``` gem to your Gemfile.
 Uglifier requires a Javascript runtime, so nodejs or equivalent will need to be installed on your server OS.
     
 
-## Simple Example
+## Generic Example
 
-This example assumes you are using a rack-based framework and ERB templates.
+This generic example assumes you are using a rack-based framework and ERB templates.
 Note that neither Rack nor ERB are required to use the vue-helpers gem.
 
 your-app-helpers.rb
@@ -110,7 +114,7 @@ Result sent to the browser.
     <div id="vue-app">
       <h1>My Vue App</h1>
       <h2>My Page of Interesting Info</h2>
-      <my-component message="Hellow World!">
+      <my-component message="Hello World!">
         <p>This block is sent to a vue slot</p>
       </my-component>    
     </div>
@@ -163,11 +167,11 @@ After Vuejs parses the script body in the browser.
 There are only three methods in vue-helpers that you need to know.
 
 ```ruby
-  vue_component(component-name, <optional-root-name>, <options>, &block)
+  vue_component(component-name, <optional-root-name>, <options-hash>, &block)
 
-  vue_app(root-app-name, <options>, &block)
+  vue_app(<root-app-name>, <options-hash>, &block)
     
-  vue_root(name)
+  vue_root(<root-ap-name>)
 ```
 
 These methods parse your .vue files, insert vue tags in your ruby template, and package all the boilerplate and compiled js code for delivery to the client. You don't need to worry about where to inline your components, where to put the Vue root-app, or how to configure Webpack or Vue loader.
