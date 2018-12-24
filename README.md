@@ -1,12 +1,12 @@
 # Vue::Helpers
 
-Vue-helpers is a Ruby gem that provides *view helper* methods for adding Vuejs functionality to your Ruby applications, without requiring a backend Javascript engine. If you're developing a Ruby web application and want to keep your Javascript strictly on the front-end, vue-helpers can assist with the following tasks.
+Vue-helpers is a Ruby gem that provides helper methods for adding Vuejs functionality to your Ruby applications. Vue-helpers makes it easy to build Vue components and applications without getting mired in the technicalities of how to package and deploy, and all without requiring a backend Javascript engine. Vue-helpers can assist with the following tasks.
 
 * Parse single-file-component.vue files.
 * Automate vue component and root boilerplate code.
 * Package and send vue-related code to client.
 * Compose vue components with your favorite ruby templating system.
-* Use multiple vue root apps.
+* Use multiple vue roots.
 * Manage global-vs-local component registration.
 * Customize the boilerplate code with your own templates.
 * Pass variables and data to vue root and component js objects.
@@ -17,7 +17,7 @@ The Vue-helpers gem officially supports Rails, Sinatra, and Rack applications us
 
 ## Requirements
 
-* Ruby 2.4 or later. Earlier versions of Ruby may work but are not tested.
+* Ruby 2.4 or later.
 
 * Vuejs 2.0 or greater. Earlier versions of Vuejs may work but are not tested.
 
