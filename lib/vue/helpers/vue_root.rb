@@ -21,7 +21,8 @@ module Vue
         #locals:             {},
       }
       
-      attr_accessor *defaults.keys
+      attr_writer *defaults.keys
+      custom_attr_reader *defaults.keys
       
       ###  Under Construction
       # Renders the html block to replace ruby vue_app tags.
@@ -90,7 +91,7 @@ module Vue
       
       # Returns HTML string of component vue templates in x-template format.
       def components_x_template(**locals)
-        components.map{|c| c.get_x_template(locals) unless c.is_set?(:template_literal)}.compact.join("\n")
+        components.map{|c| c.get_x_template(locals) unless c.template_literal}.compact.join("\n")
       end      
       
       # Compiles js output (components & root) for entire vue-app for this root object.
@@ -117,7 +118,7 @@ module Vue
           #app_name:         (options[:app_name] || js_var_name),
           app_name:         js_var_name,
           file_name:        file_name,
-          template_engine:  template_engine,
+          template_engine:  template_engine(false),
           components:       component_names,
           vue_data_json:    data.to_json
         }.merge!(locals)

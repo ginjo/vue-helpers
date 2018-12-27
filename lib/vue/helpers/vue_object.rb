@@ -38,18 +38,19 @@ module Vue
         repo:             nil
       }
       
-      
       # Concatenates subclass defaults with master class defaults.
       def self.defaults
         super_defaults = superclass.singleton_class.method_defined?(__method__) ? superclass.defaults : (@defaults || {})
         super_defaults.merge(@defaults || {})
       end
       
-      # def self.inherited(other)
-      #   puts "#{self} inherited by #{other} with default-keys: #{other.defaults.keys}"
-      #   other.send(:attr_accessor, :repo, *other.defaults.keys)
-      # end
-        
+      def self.custom_attr_reader(*args)
+        args.each do |a|
+          define_method(a) do |use_default=true|
+            get_attribute(a, use_default)
+          end
+        end
+      end
       
       #attr_accessor :repo, *defaults.keys
       attr_reader   :initialized
@@ -83,13 +84,13 @@ module Vue
         #puts "\n#{self.class.name}.initialize_options '#{name}' #{options.inspect}, locals:#{locals.inspect}"
         return self unless options.size > 0 && !@initialized
         locals = options.delete(:locals) || {}
-        puts "\n#{self.class.name}.initialize_options '#{name}', #{options.inspect}, locals:#{locals.inspect}"
+        #puts "\n#{self.class.name}.initialize_options '#{name}', #{options.inspect}, locals:#{locals.inspect}"
 
         merged_options = defaults.dup.merge(options)
         
         # Sets each default ivar, unless ivar is already non-nil.
         merged_options.each do |k,v|
-          puts "Setting ivar '#{k}' with '#{v}', was previously '#{instance_variable_get('@' + k.to_s)}'"
+          #puts "Setting ivar '#{k}' with '#{v}', was previously '#{instance_variable_get('@' + k.to_s)}'"
           #instance_variable_set("@#{k}", v) if v && instance_variable_get("@#{k}").nil?  #!(v.respond_to?(:empty) && v.empty?)
           instance_variable_set("@#{k}", v) if instance_variable_get("@#{k}").nil?
         end
@@ -113,7 +114,7 @@ module Vue
       
       # Loads a dot-vue into a tilt template, but doesn't render or parse it.
       def load_tilt_template
-        self.tilt_template = context.load_template(file_name.to_sym, template_engine:template_engine)
+        self.tilt_template = context.load_template(file_name.to_sym, template_engine:template_engine(false))
       end
       
       # Renders loaded tilt_template.
@@ -122,7 +123,7 @@ module Vue
       def render_template(**locals)
         @rendered_template ||= (
           #puts "\n#{self.class.name} '#{name}' calling render_template with tilt_template: #{tilt_template&.file}, engine: #{template_engine}, locals: #{locals}"
-          context.render_ruby_template(tilt_template, template_engine:template_engine, locals:locals.merge(vo:self, vue_object:self))
+          context.render_ruby_template(tilt_template, template_engine:template_engine(false), locals:locals.merge(vo:self, vue_object:self))
         )
       end
       
@@ -167,11 +168,21 @@ module Vue
         name.to_s.camelize
       end
       
-      def is_set?(setting)
+      # def is_set?(setting)
+      #   case
+      #     when !send(setting).nil?; send(setting)
+      #     when !root.send(setting).nil?; root.send(setting)
+      #     when !Vue::Helpers.send(setting).nil?; Vue::Helpers.send(setting)
+      #   end
+      # end
+      
+      # Get attribute, considering upstream possibilities.
+      # TODO: Make this so it doesn't call twice for each 'when'.
+      def get_attribute(attribute, use_default=true)
         case
-          when !send(setting).nil?; send(setting)
-          when !root.send(setting).nil?; root.send(setting)
-          when !Vue::Helpers.send(setting).nil?; Vue::Helpers.send(setting)
+          when !instance_variable_get("@#{attribute}").nil?; instance_variable_get("@#{attribute}")
+          when type != 'root' && !root.send(attribute).nil?; root.send(attribute)
+          when use_default && !Vue::Helpers.send(attribute).nil?; Vue::Helpers.send(attribute)
         end
       end
     
