@@ -12,7 +12,7 @@ module Vue
       
       #puts "VueComponent defining @defaults"
       @defaults = {
-        root_name:         Vue::Helpers.root_name,
+        root_name:         nil,  #Vue::Helpers.root_name,
         register_local:    nil,
         template_literal:  nil
       }

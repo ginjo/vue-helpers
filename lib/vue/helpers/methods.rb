@@ -1,6 +1,7 @@
 require 'tilt'
 require 'erb'
 
+require_relative '../helpers'
 require_relative 'helper_refinements'
 require_relative 'utilities'
 require_relative 'vue_repository'

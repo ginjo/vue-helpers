@@ -14,10 +14,10 @@ module Vue
       @defaults = {
         #app_name:           nil,
         name:                Vue::Helpers.root_name,
-        external_resource:   Vue::Helpers.external_resource,
+        external_resource:   nil,  #Vue::Helpers.external_resource,
         template_literal:    nil,  #Vue::Helpers.template_literal,
         register_local:      nil,  #Vue::Helpers.register_local,
-        minify:              Vue::Helpers.minify,
+        minify:              nil,  #Vue::Helpers.minify,
         #locals:             {},
       }
       
