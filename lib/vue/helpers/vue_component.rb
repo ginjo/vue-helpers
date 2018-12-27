@@ -12,8 +12,9 @@ module Vue
       
       puts "VueComponent defining @defaults"
       @defaults = {
-        root_name: Vue::Helpers.root_name,
-        template_literal: nil
+        root_name:         Vue::Helpers.root_name,
+        register_local:    nil,
+        template_literal:  nil
       }
       
       attr_accessor *defaults.keys
@@ -48,10 +49,10 @@ module Vue
       # Builds js output string.
       # TODO: Follow this backwards/upstream to determine if parsed_template, parsed_script, and locals are being handled correctly.
       #def to_component_js(register_local:Vue::Helpers.register_local, template_literal:Vue::Helpers.template_literal, locals:{})  #, **options)
-      def to_component_js(register_local:Vue::Helpers.register_local, locals:{})
+      def to_component_js(locals:{})
           # The above **options are not used yet, but need somewhere to catch extra stuff.
-          template_spec = template_literal? ? "\`#{parsed_template(locals).to_s.escape_backticks}\`" : "'##{name}-template'"
-          js_output = register_local \
+          template_spec = is_set?(:template_literal) ? "\`#{parsed_template(locals).to_s.escape_backticks}\`" : "'##{name}-template'"
+          js_output = is_set?(:register_local) \
             ? 'var #{name} = {template: #{template_spec}, \2;'
             : 'var #{name} = Vue.component("#{name}", {template: #{template_spec}, \2);'  # ) << ")"
           
@@ -68,13 +69,13 @@ module Vue
         wrapper(:x_template_html, name:name, template:parsed_template(locals), **locals)
       end
       
-      def template_literal?
-        case
-          when !template_literal.nil?; template_literal
-          when !root.template_literal.nil?; root.template_literal
-          when !Vue::Helpers.template_literal.nil?; Vue::Helpers.template_literal
-        end
-      end
+      # def template_literal?
+      #   case
+      #     when !template_literal.nil?; template_literal
+      #     when !root.template_literal.nil?; root.template_literal
+      #     when !Vue::Helpers.template_literal.nil?; Vue::Helpers.template_literal
+      #   end
+      # end
       
     end # VueComponent
   end # Helpers

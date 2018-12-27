@@ -166,6 +166,14 @@ module Vue
       def js_var_name
         name.to_s.camelize
       end
+      
+      def is_set?(setting)
+        case
+          when !send(setting).nil?; send(setting)
+          when !root.send(setting).nil?; root.send(setting)
+          when !Vue::Helpers.send(setting).nil?; Vue::Helpers.send(setting)
+        end
+      end
     
     end # VueObject
   end # Helpers

@@ -16,7 +16,7 @@ module Vue
         name:                Vue::Helpers.root_name,
         external_resource:   Vue::Helpers.external_resource,
         template_literal:    nil,  #Vue::Helpers.template_literal,
-        register_local:      Vue::Helpers.register_local,
+        register_local:      nil,  #Vue::Helpers.register_local,
         minify:              Vue::Helpers.minify,
         #locals:             {},
       }
@@ -90,7 +90,7 @@ module Vue
       
       # Returns HTML string of component vue templates in x-template format.
       def components_x_template(**locals)
-        components.map{|c| c.get_x_template(locals) unless c.template_literal?}.compact.join("\n")
+        components.map{|c| c.get_x_template(locals) unless c.is_set?(:template_literal)}.compact.join("\n")
       end      
       
       # Compiles js output (components & root) for entire vue-app for this root object.
