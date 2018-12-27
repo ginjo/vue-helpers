@@ -180,9 +180,19 @@ module Vue
       # TODO: Make this so it doesn't call twice for each 'when'.
       def get_attribute(attribute, use_default=true)
         case
-          when !instance_variable_get("@#{attribute}").nil?; instance_variable_get("@#{attribute}")
-          when type != 'root' && !root.send(attribute).nil?; root.send(attribute)
-          when use_default && !Vue::Helpers.send(attribute).nil?; Vue::Helpers.send(attribute)
+          when
+            ( val = instance_variable_get("@#{attribute}"); !val.nil? );
+            val
+          when
+            type != 'root' &&
+            root.respond_to?(attribute) &&
+            ( val = root.send(attribute); !val.nil? );
+            val
+          when
+            use_default &&
+            Vue::Helpers.respond_to?(attribute) &&
+            ( val = Vue::Helpers.send(attribute); !val.nil? );
+            val
         end
       end
     
