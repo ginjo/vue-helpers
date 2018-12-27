@@ -43,7 +43,7 @@ module Vue
         
         #puts "\nvue_component '#{name}' with local-vars '#{local_variables.inject({}){ |c, i| c[i.to_s] = eval(i.to_s); c }}'"
         
-        # This should only pass args that are necessary to build the base object.
+        # This should only pass args that are necessary to build the component object.
         # Tag-name and attributes are not relevant here.
         component = vue_root(root_name).component(name, locals:locals, **options)
         

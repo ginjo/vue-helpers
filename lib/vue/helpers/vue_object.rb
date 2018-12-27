@@ -45,7 +45,13 @@ module Vue
         super_defaults.merge(@defaults || {})
       end
       
-      attr_accessor :repo, *defaults.keys
+      # def self.inherited(other)
+      #   puts "#{self} inherited by #{other} with default-keys: #{other.defaults.keys}"
+      #   other.send(:attr_accessor, :repo, *other.defaults.keys)
+      # end
+        
+      
+      #attr_accessor :repo, *defaults.keys
       attr_reader   :initialized
       
       
@@ -77,12 +83,15 @@ module Vue
         #puts "\n#{self.class.name}.initialize_options '#{name}' #{options.inspect}, locals:#{locals.inspect}"
         return self unless options.size > 0 && !@initialized
         locals = options.delete(:locals) || {}
-        #puts "\n#{self.class.name}.initialize_options '#{name}', #{options.inspect}, locals:#{locals.inspect}"
+        puts "\n#{self.class.name}.initialize_options '#{name}', #{options.inspect}, locals:#{locals.inspect}"
 
         merged_options = defaults.dup.merge(options)
+        
+        # Sets each default ivar, unless ivar is already non-nil.
         merged_options.each do |k,v|
-          #puts "Setting ivar '#{k}' with '#{v}', was previously '#{instance_variable_get('@' + k.to_s)}'"
-          instance_variable_set("@#{k}", v) if v && instance_variable_get("@#{k}").nil?  #!(v.respond_to?(:empty) && v.empty?)
+          puts "Setting ivar '#{k}' with '#{v}', was previously '#{instance_variable_get('@' + k.to_s)}'"
+          #instance_variable_set("@#{k}", v) if v && instance_variable_get("@#{k}").nil?  #!(v.respond_to?(:empty) && v.empty?)
+          instance_variable_set("@#{k}", v) if instance_variable_get("@#{k}").nil?
         end
         
         @file_name ||= @name

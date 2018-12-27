@@ -10,9 +10,18 @@ module Vue
     class VueComponent < VueObject
       def type; 'component'; end
       
+      puts "VueComponent defining @defaults"
       @defaults = {
-        root_name: Vue::Helpers.root_name
+        root_name: Vue::Helpers.root_name,
+        template_literal: nil
       }
+      
+      attr_accessor *defaults.keys
+      
+      # Gets root object
+      def root
+        repo.root(root_name)
+      end
       
       # Renders the html block to replace ruby vue_component tags.
       # TODO: Are locals used here? Do they work?
@@ -38,9 +47,10 @@ module Vue
   
       # Builds js output string.
       # TODO: Follow this backwards/upstream to determine if parsed_template, parsed_script, and locals are being handled correctly.
-      def to_component_js(register_local:Vue::Helpers.register_local, template_literal:Vue::Helpers.template_literal, locals:{})  #, **options)
+      #def to_component_js(register_local:Vue::Helpers.register_local, template_literal:Vue::Helpers.template_literal, locals:{})  #, **options)
+      def to_component_js(register_local:Vue::Helpers.register_local, locals:{})
           # The above **options are not used yet, but need somewhere to catch extra stuff.
-          template_spec = template_literal ? "\`#{parsed_template(locals).to_s.escape_backticks}\`" : "'##{name}-template'"
+          template_spec = template_literal? ? "\`#{parsed_template(locals).to_s.escape_backticks}\`" : "'##{name}-template'"
           js_output = register_local \
             ? 'var #{name} = {template: #{template_spec}, \2;'
             : 'var #{name} = Vue.component("#{name}", {template: #{template_spec}, \2);'  # ) << ")"
@@ -53,10 +63,17 @@ module Vue
           ).interpolate(name: name.to_s.camelize, template_spec: template_spec) if _parsed_script
       end
       
-      
       # TODO: Follow this backwards/upstream to determine if parsed_template, parsed_script, and locals are being handled correctly.
       def get_x_template(**locals)
         wrapper(:x_template_html, name:name, template:parsed_template(locals), **locals)
+      end
+      
+      def template_literal?
+        case
+          when !template_literal.nil?; template_literal
+          when !root.template_literal.nil?; root.template_literal
+          when !Vue::Helpers.template_literal.nil?; Vue::Helpers.template_literal
+        end
       end
       
     end # VueComponent

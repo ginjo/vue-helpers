@@ -1,23 +1,46 @@
 # Vue::Helpers
 
-Vue-helpers is a Ruby gem that provides helper methods for adding [Vuejs](https://vuejs.org) functionality to your Ruby applications. Vue-helpers makes it easy to build Vue components and applications without getting mired in the technicalities of how to package and deploy, and all without requiring a backend Javascript engine. Vue-helpers can assist with the following tasks.
+Vue-helpers is a Ruby gem that provides helper methods for adding [Vuejs](https://vuejs.org) functionality to your Ruby applications. Vue-helpers makes it easy to build Vue applications and components without getting mired in the technicalities of how to package and deploy. Vue-helpers does not depend on server-side Javascript processing, just Ruby.
+
+#### What's it for?
+
+The goal of vue-helpers is to make it easy to use the primary features of Vuejs in your front-end code with minimal setup and maintenance. Vue-helpers is not trying to replace the backend JS tools like Webpack and Vue Loader.
+
+#### Who's it for?
+
+I like to use Vuejs for responsive front-end components, but I'm still building my application primarily in Ruby. I want something to handle the details of packaging and sending Vuejs code to the browser.
+
+#### What's it look like?
+
+```erb
+  <%= vue_app do %>
+    <p>Everything in this block is part of the Vue app.</p>
+    <%= vue_component 'my-component', attributes: {color:'green', ':click':'doSomething'} do %>
+      <p>This block is passed to the component slot.</p>
+    <% end %>
+  <% end %>
+```
+
+The rendered html contains the Vue app, the 'my-component' template & JS object (rendered from my-component.vue.erb) and the root Vue app, all packaged with the appropriate html tags for the browser. See below for more examples.
+
+#### Features at a glance:
 
 * Parse single-file-component.vue files.
-* Automate vue component and root boilerplate code.
-* Package and send vue-related code to client.
-* Compose vue components with your favorite ruby templating system.
-* Use multiple vue roots.
+* Automate Vue component and root boilerplate code.
+* Package and send Vue-related code to the client.
+* Compose Vue components with your favorite Ruby templating system.
+* Use multiple Vue roots.
 * Manage global-vs-local component registration.
 * Customize the boilerplate code with your own templates.
-* Pass variables and data to vue root and component js objects.
-* Inline the rendered html/js or serve it as an external script resource.
+* Pass variables and data to Vue root and component JS objects.
+* Inline the rendered HTML/JS or serve it as an external script resource.
 
 The Vue-helpers gem officially supports Rails, Sinatra, and Rack applications using Erb, Haml, and Slim templating. In most cases, support for additional frameworks and templating libraries is easily integrated.
 
 
 ## Requirements
 
-* Ruby 2.3 or later. Earlier versions of Ruby may work but are not tested.
+* Ruby 2.3 or greater. Earlier versions of Ruby may work but are not tested.
 
 * Vuejs 2.0 or greater. Earlier versions of Vuejs may work but are not tested.
 
@@ -66,8 +89,8 @@ your-app-helpers.rb
 views/foo.erb
 ```erb  
   <h2>My Page of Interesting Info</h2>
-  <% vue_component 'my-component', message:'Hello World!' %>
-    <p>This block is sent to a vue slot</p>
+  <% vue_component 'my-component', attributes:{message:'Hello World!'} %>
+    <p>This block is sent to a Vue slot</p>
   <% end %>
 ```
 
@@ -86,10 +109,10 @@ views/my-component.vue.erb
     }
   </script>
   
-  <!-- Scoped styles are a feature of the Vue Loader (backend JS tool) and are not supported the vue-helpers gem. -->
+  <!-- Scoped styles are a feature of the Vue Loader and are not supported (yet?) in the vue-helpers gem. -->
 ```
 
-vues/layout.erb
+views/layout.erb
 ```erb  
   <html>
     <head>
@@ -115,7 +138,7 @@ Result sent to the browser.
       <h1>My Vue App</h1>
       <h2>My Page of Interesting Info</h2>
       <my-component message="Hello World!">
-        <p>This block is sent to a vue slot</p>
+        <p>This block is sent to a Vue slot</p>
       </my-component>    
     </div>
   
@@ -151,7 +174,7 @@ After Vuejs parses the script body in the browser.
       <h2>My Page of Interesting Info</h2>
       <div>
         <p>This is a Vuejs single-file-component Hello World!</p>
-        <p>This block is sent to a vue slot</p>
+        <p>This block is sent to a Vue slot</p>
       </div>
     </div>
 
@@ -174,16 +197,16 @@ There are only three methods in vue-helpers that you need to know.
   vue_root(<root-ap-name>)
 ```
 
-These methods parse your .vue files, insert vue tags in your ruby template, and package all the boilerplate and compiled js code for delivery to the client. You don't need to worry about where to inline your components, where to put the Vue root-app, or how to configure Webpack or Vue loader.
+These methods parse your .vue files, insert Vue tags in your Ruby template, and package all the boilerplate and compiled JS code for delivery to the client. You don't need to worry about where to inline your components, where to put the Vue root-app, or how to configure Webpack or Vue Loader.
 
 #### vue_component()
-  Inserts/wraps block with vue component tags...
+  Inserts/wraps block with Vue component tags...
   
 #### vue_app()
-  Inserts/wraps block with vue root-app tags...
+  Inserts/wraps block with Vue root-app tags...
   
 #### vue_root()
-  Access the Ruby object model representing your vue app(s)...
+  Access the Ruby object model representing your Vue app(s)...
 
 ## Configuration and Options
 
