@@ -33,6 +33,9 @@ module Vue
       # This has to be here, NOT above under HelperRefinements.
       using CoreRefinements
       
+      # Can't be private, since VueObject instances call these methods.
+      #private
+      
       # TODO: Cleanup Load/Render template calls upstream, then cleanup these methods here.
       # These are a mess, since they were hacked together when their functionality was split up.
       def render_ruby_template(template_text_or_file, template_engine:nil, locals:{})
@@ -164,10 +167,13 @@ module Vue
     
     
     if RUBY_VERSION.to_f < 2.4
+      # This needs to be defined anyway, since 'refine' is called
+      # in other modules/classes.
+      module HelperRefinements
+      end
       # Use MethodsBlock as regular Module methods if Ruby < 2.4.
       module Methods
-        private
-        MethodsBlock.call
+        class_eval(&MethodsBlock)
       end
     else
       # Use MethodsBlock as Module refinements if Ruby >= 2.4.
@@ -177,11 +183,6 @@ module Vue
         end
       end # HelperRefinements
       using HelperRefinements
-    end
-    
-    # This needs to be defined anyway, since 'refine' is called
-    # in other modules/classes.
-    module HelperRefinements
     end
     
   end # Helpers
