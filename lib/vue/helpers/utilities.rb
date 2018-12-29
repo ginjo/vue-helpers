@@ -23,7 +23,7 @@ module Vue
       
       refine Hash do
         def to_html_attributes
-          inject(''){|o, kv| o.to_s << "#{kv[0]}=\"#{kv[1]}\" "}
+          inject(''){|o, kv| o.to_s << %Q(#{kv[0]}="#{kv[1]}")}
         end
       end
       
