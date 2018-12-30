@@ -16,6 +16,7 @@ class Vue::HelpersTest < Minitest::Test
 end
 
 describe Vue::Helpers::Methods do
+
   describe 'vue_repository' do
   end
   
@@ -56,5 +57,16 @@ describe Vue::Helpers::Methods do
   end
   
   describe 'vue_app' do
+    let(:mock_controller) {Klas.new}
+    
+    it 'returns js wrapped in html script tags' do
+      #puts VUE_APP_HTML_WITHOUT_BLOCK
+      #puts mock_controller.vue_app
+      assert_equal VUE_APP_HTML_WITHOUT_BLOCK,  mock_controller.vue_app
+    end
+    
+    it 'prepends vue-app baseline script with inner-html block wrapped in div' do
+      assert_equal VUE_APP_HTML_WITH_BLOCK, mock_controller.vue_app(){'vue-app-inner-html'}
+    end
   end
 end
