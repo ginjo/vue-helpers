@@ -63,7 +63,7 @@ describe Vue::Helpers::Methods do
   describe 'vue_app' do
     let(:mock_controller) {Klas.new}
     
-    it 'returns js wrapped in html script tags' do
+    it 'returns js wrapped in html script block' do
       #puts VUE_APP_HTML_WITHOUT_BLOCK
       #puts mock_controller.vue_app
       assert_equal VUE_APP_HTML_WITHOUT_BLOCK,  mock_controller.vue_app
@@ -71,6 +71,13 @@ describe Vue::Helpers::Methods do
     
     it 'prepends vue-app baseline script with inner-html block wrapped in div' do
       assert_equal VUE_APP_HTML_WITH_BLOCK, mock_controller.vue_app(){'vue-app-inner-html'}
+    end
+    
+    it 'includes component objects in script block' do
+      mock_controller.vue_component('test-component')
+      output = mock_controller.vue_app
+      assert output.lines[4][/test-component inner text/]
+      assert output.lines[12][/var VueApp = new Vue.*vue-app.*TestComponent/]
     end
   end
 end

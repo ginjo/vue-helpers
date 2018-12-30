@@ -2,6 +2,12 @@ $LOAD_PATH.unshift File.expand_path("../../lib", __FILE__)
 require "vue/helpers"
 
 require "minitest/autorun"
+require 'minitest/reporters'
+
+reporter_options = { color: true }
+Minitest::Reporters.use! [Minitest::Reporters::DefaultReporter.new(reporter_options)]
+
+Vue::Helpers.defaults[:views_path] = 'test/support'
 
 VUE_APP_HTML_WITHOUT_BLOCK = <<'EEOOFF'
 
