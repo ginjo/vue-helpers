@@ -28,3 +28,4 @@ EEOOFF
 
 
 puts RUBY_DESCRIPTION
+puts "Running minitest with #{$0}"
