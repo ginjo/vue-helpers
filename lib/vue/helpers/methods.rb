@@ -26,6 +26,7 @@ module Vue
         #puts "Getting vue_repository #{@vue_repository.class} with keys: #{@vue_repository.keys}"
         @vue_repository
       end
+      alias_method :vue_repo, :vue_repository
       
       def vue_root(root_name=nil, **options)
         vue_repository.root(root_name, **options)

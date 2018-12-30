@@ -10,14 +10,18 @@ class Vue::HelpersTest < Minitest::Test
     refute_nil ::Vue::Helpers::VERSION
   end
 
-  def test_imbues_methods_when_included
+  def test_adds_core_methods_when_included
     assert Klas.method_defined?(:vue_component)
   end
 end
 
 describe Vue::Helpers::Methods do
+  let(:mock_controller) {Klas.new}
 
   describe 'vue_repository' do
+    it 'returns a Vue::Helpers::VueRepository instance' do
+      assert_kind_of Vue::Helpers::VueRepository, mock_controller.vue_repo
+    end
   end
   
   describe 'vue_root' do
