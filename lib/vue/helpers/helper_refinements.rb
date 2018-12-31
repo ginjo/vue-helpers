@@ -131,10 +131,14 @@ module Vue
         current_template = current_template_engine #|| Vue::Helpers.template_engine
         #puts "CAPTURE_HTML current_template: #{current_template}."
         
+        # This is mostly for Rails.
+        return(capture(*args, &block)) if respond_to?(:capture)
+        
+        # This is for when we know the current-template (when we're already inside a Tilt rendering).
         case current_template.to_s
         when /erb/
           #puts "Capturing ERB block."
-          return(capture(*args, &block)) if respond_to?(:capture)
+          #return(capture(*args, &block)) if respond_to?(:capture)
           pos = buffer(buffer_name).size
           yield(*args)
           #puts "Capture_html block.call result: #{r}"
