@@ -85,7 +85,7 @@ module Vue
         #puts "\n#{self.class.name}.initialize_options '#{name}' #{options.inspect}"
         return self unless options.size > 0 && !@initialized
         locals = options.delete(:locals) || {}
-        puts "\n#{self.class.name}.initialize_options '#{name}', #{options.inspect}, locals:#{locals.inspect}"
+        #puts "\n#{self.class.name}.initialize_options '#{name}', #{options.inspect}, locals:#{locals.inspect}"
 
         merged_options = defaults.dup.merge(options)
         

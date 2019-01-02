@@ -114,12 +114,12 @@ module Vue
       # See https://gist.github.com/seanami/496702
       # TODO: This needs to handle haml & slim as well.
       
+      # Returns any buffer with size > 0, otherwise nil.
       def buffer(buffer_name = nil)
         #@_out_buf
         buffer_name ||= Tilt.current_template.instance_variable_get('@outvar') || @outvar || Vue::Helpers.default_outvar
         #puts "BUFFER chosen: #{buffer_name}, ivars: #{instance_variables}"
-        instance_variable_get(buffer_name) ||
-        instance_variable_set(buffer_name, '')
+        instance_variable_get(buffer_name)
       end
       
       # TODO: Probbably need to pass root_name (and other options?) on to sub-components inside block.
@@ -129,10 +129,6 @@ module Vue
         #puts "CAPTURE_HTML args: #{args}, root_name: #{root_name}, buffer_name:#{buffer_name}, locals:#{locals}"
         return unless block_given?
         
-        #current_template = current_template_engine
-        #puts "CAPTURE_HTML current_template: #{current_template}."
-        #puts "CAPTURE_HTML block info: #{block.binding.local_variables}" if block_given?
-        
         # This is mostly for Rails. Are there other frameworks that would use this?
         return(capture(*args, &block)) if respond_to?(:capture)
         
@@ -141,20 +137,26 @@ module Vue
         # we can only take a best guess. If we're wrong, the user will need to set
         # Vue::Helpers.defaults[:template_engine] to a known template type.
         current_template = current_template_engine(true)
+        #puts "CAPTURE_HTML current_template: #{current_template}."
+        #puts "CAPTURE_HTML block info: block-local-vars:#{block.binding.local_variables}, block-ivars:#{block.binding.eval('instance_variables')}, controller-ivars:#{instance_variables}" if block_given?
         
         case current_template.to_s
         when /erb/
           #puts "Capturing ERB block."
           #return(capture(*args, &block)) if respond_to?(:capture)
-          pos = buffer(buffer_name).size
-          yield(*args)
-          #puts "Capture_html block.call result: #{r}"
-          buffer(buffer_name).slice!(pos..buffer(buffer_name).size)
+          pos = buffer(buffer_name).to_s.size
+          rslt = yield(*args)
+          #puts "Capture_html erb buffer name '#{buffer_name}', yield result '#{rslt}'"
+          if pos = 0
+            rslt
+          else
+            buffer(buffer_name).to_s.slice!(pos..buffer(buffer_name).to_s.size)
+          end
         when /haml/
           #puts "Capturing HAML block."
           capture_haml(*args, &block)
         else
-          #puts "Capturing generic template block."
+          #puts "Yielding to generic template block."
           yield(*args)
         end
         
@@ -166,7 +168,7 @@ module Vue
         #puts "CONCAT_CONTENT current_template_engine: #{current_template_engine}."
         case current_template.to_s
         when /erb/ 
-          buffer(buffer_name) << text
+          buffer(buffer_name).to_s << text
         when /haml/
           haml_concat(text)
         else
