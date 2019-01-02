@@ -56,6 +56,7 @@ module Vue
     ::ERB.send(:prepend, ModErb)
     
     module ControllerPrepend
+      # Assign value to undefined @outvar
       def initialize(*args)
         super
         unless defined?(@outvar)

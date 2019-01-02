@@ -18,6 +18,13 @@ module Vue
     module Methods
     
       def self.included(other)
+        # If Rails
+        if other.name[/Helper/] && Module.const_defined?(:ActionView)
+          # TODO: This should be logger.debug.
+          puts "#{other} including ActionView::Helpers::CaptureHelper"
+          include ActionView::Helpers::CaptureHelper
+        end
+        
         other.send(:prepend, ControllerPrepend)
       end
 

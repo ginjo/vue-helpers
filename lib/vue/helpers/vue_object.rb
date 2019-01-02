@@ -44,6 +44,7 @@ module Vue
         super_defaults.merge(@defaults || {})
       end
       
+      # Creates custom attr readers that tie in to defaults.
       def self.custom_attr_reader(*args)
         args.each do |a|
           define_method(a) do |use_default=true|
@@ -81,10 +82,10 @@ module Vue
       def initialize_options(**options)
         @repo ||= options.delete(:repo)
         #locals = options.delete(:locals) || {}
-        #puts "\n#{self.class.name}.initialize_options '#{name}' #{options.inspect}, locals:#{locals.inspect}"
+        #puts "\n#{self.class.name}.initialize_options '#{name}' #{options.inspect}"
         return self unless options.size > 0 && !@initialized
         locals = options.delete(:locals) || {}
-        #puts "\n#{self.class.name}.initialize_options '#{name}', #{options.inspect}, locals:#{locals.inspect}"
+        puts "\n#{self.class.name}.initialize_options '#{name}', #{options.inspect}, locals:#{locals.inspect}"
 
         merged_options = defaults.dup.merge(options)
         
@@ -123,7 +124,7 @@ module Vue
       def render_template(**locals)
         @rendered_template ||= (
           #puts "\n#{self.class.name} '#{name}' calling render_template with tilt_template: #{tilt_template&.file}, engine: #{template_engine}, locals: #{locals}"
-          context.render_ruby_template(tilt_template, template_engine:template_engine(false), locals:locals.merge(vo:self, vue_object:self))
+          context.render_ruby_template(tilt_template, template_engine:template_engine(false), locals:locals.merge(vo:self, vue_object:self)) if !tilt_template.to_s.empty?
         )
       end
       
@@ -177,7 +178,6 @@ module Vue
       # end
       
       # Get attribute, considering upstream possibilities.
-      # TODO: Make this so it doesn't call twice for each 'when'.
       def get_attribute(attribute, use_default=true)
         case
           when
@@ -186,7 +186,7 @@ module Vue
           when
             type != 'root' &&
             root.respond_to?(attribute) &&
-            ( val = root.send(attribute); !val.nil? );
+            ( val = root.send(attribute, use_default); !val.nil? );
             val
           when
             use_default &&

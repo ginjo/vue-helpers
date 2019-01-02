@@ -39,7 +39,7 @@ module Vue
       # TODO: Cleanup Load/Render template calls upstream, then cleanup these methods here.
       # These are a mess, since they were hacked together when their functionality was split up.
       def render_ruby_template(template_text_or_file, template_engine:nil, locals:{})
-        #puts "  Rendering ruby template '#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}' with locals:#{locals}, template_engine:#{template_engine}, Tilt.current_tempate: '#{Tilt.current_template}'"
+        #puts "  RENDERING ruby template '#{template_text_or_file.to_s[0..32].gsub(/\n/, ' ')}' with locals:#{locals}, template_engine:#{template_engine}, Tilt.current_tempate: '#{Tilt.current_template}'\n"
         
         tilt_template = load_template(template_text_or_file, template_engine:nil)
       
@@ -58,7 +58,7 @@ module Vue
       end
       
       def load_template(template_text_or_file, template_engine:nil)
-        #puts "  Loading template '#{template_text_or_file}' with engine: #{template_engine}"
+        #puts "  LOADING template '#{template_text_or_file}' with engine: #{template_engine}"
         case template_text_or_file
         when Tilt::Template
           #puts "  Loading existing tilt template '#{template_text_or_file}' from '#{template_text_or_file.file}' with engine: #{template_engine}"
@@ -86,9 +86,9 @@ module Vue
       end
       
       # Returns nil instead of default if no current engine.
-      def current_template_engine
+      def current_template_engine(use_default=false)
         #current_engine || Vue::Helpers.template_engine
-        Tilt.default_mapping.template_map.invert[Tilt.current_template.class]  #|| Vue::Helpers.template_engine
+        Tilt.default_mapping.template_map.invert[Tilt.current_template.class] || (use_default && Vue::Helpers.template_engine)
       end
       
       # TODO: Decide how we want to determine template-engine suffix.
@@ -128,13 +128,20 @@ module Vue
       def capture_html(*args, root_name:Vue::Helpers.root_name, buffer_name:nil, locals:{}, &block)
         #puts "CAPTURE_HTML args: #{args}, root_name: #{root_name}, buffer_name:#{buffer_name}, locals:#{locals}"
         return unless block_given?
-        current_template = current_template_engine #|| Vue::Helpers.template_engine
-        #puts "CAPTURE_HTML current_template: #{current_template}."
         
-        # This is mostly for Rails.
+        #current_template = current_template_engine
+        #puts "CAPTURE_HTML current_template: #{current_template}."
+        #puts "CAPTURE_HTML block info: #{block.binding.local_variables}" if block_given?
+        
+        # This is mostly for Rails. Are there other frameworks that would use this?
         return(capture(*args, &block)) if respond_to?(:capture)
         
-        # This is for when we know the current-template (when we're already inside a Tilt rendering).
+        # This is one of the points where we finally need to know what template
+        # we're using. If the actively-rendering template is not handled by Tilt,
+        # we can only take a best guess. If we're wrong, the user will need to set
+        # Vue::Helpers.defaults[:template_engine] to a known template type.
+        current_template = current_template_engine(true)
+        
         case current_template.to_s
         when /erb/
           #puts "Capturing ERB block."
@@ -155,7 +162,7 @@ module Vue
       
       def concat_content(text='', buffer_name:nil)
         return(text) if respond_to?(:capture)
-        current_template = current_template_engine || Vue::Helpers.template_engine
+        current_template = current_template_engine(true)
         #puts "CONCAT_CONTENT current_template_engine: #{current_template_engine}."
         case current_template.to_s
         when /erb/ 
