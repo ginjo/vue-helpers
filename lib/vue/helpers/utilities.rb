@@ -1,3 +1,5 @@
+require 'erb'
+
 module Vue
   module Helpers
   
@@ -46,23 +48,31 @@ module Vue
       end
     end # CoreRefinements
     
-    module ModErb
+    module ErbPrepend
       def initialize(*args)
-        #puts "ERB.new(*args): #{args.to_yaml}"
+        #puts "ERB.new: #{args.to_yaml}"
+        #puts "ERB.new with eoutvar: #{args[3]}"
         args[3] ||= Vue::Helpers.default_outvar
         super
       end
+      
+      def set_eoutvar(*args)
+        #puts "ERB.set_eoutvar: #{args[1]}"
+        Thread.current.instance_variable_set(:@current_eoutvar, args[1])
+        super
+      end
     end
-    ::ERB.send(:prepend, ModErb)
+    ::ERB.send(:prepend, ErbPrepend)
     
     module ControllerPrepend
       # Assign value to undefined @outvar
-      def initialize(*args)
-        super
-        unless defined?(@outvar)
-          @outvar ||= Vue::Helpers.default_outvar
-        end
-      end
+      # TODO: This might not be needed any more, after implementation of ERB.set_eoutvar hack.
+      # def initialize(*args)
+      #   super
+      #   unless defined?(@outvar)
+      #     @outvar ||= Vue::Helpers.default_outvar
+      #   end
+      # end
     end
     
   end # Helpers

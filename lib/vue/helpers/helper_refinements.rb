@@ -59,6 +59,7 @@ module Vue
       
       def load_template(template_text_or_file, template_engine:nil)
         #puts "  LOADING template '#{template_text_or_file}' with engine: #{template_engine}"
+        current_eoutvar = Thread.current.instance_variable_get(:@current_eoutvar)
         case template_text_or_file
         when Tilt::Template
           #puts "  Loading existing tilt template '#{template_text_or_file}' from '#{template_text_or_file.file}' with engine: #{template_engine}"
@@ -83,6 +84,8 @@ module Vue
         puts "BACKTRACE:"
         puts $!.backtrace
         nil
+      ensure
+        Thread.current.instance_variable_set(:@current_eoutvar, current_eoutvar)
       end
       
       # Returns nil instead of default if no current engine.
@@ -112,21 +115,31 @@ module Vue
       
       # Capture & Concat
       # See https://gist.github.com/seanami/496702
-      # TODO: This needs to handle haml & slim as well.
+      # TODO: These need to handle haml & slim as well.
       
-      # Returns any buffer with size > 0, otherwise nil.
+      def get_current_eoutvar
+        Thread.current.instance_variable_get(:@current_eoutvar)
+      end
+      
+      # Returns any buffer (even if not defined).
       def buffer(buffer_name = nil)
         #@_out_buf
-        buffer_name ||= Tilt.current_template.instance_variable_get('@outvar') || @outvar || Vue::Helpers.default_outvar
-        #puts "BUFFER chosen: #{buffer_name}, ivars: #{instance_variables}"
-        instance_variable_get(buffer_name)
+        #buffer_name ||= Tilt.current_template.instance_variable_get('@outvar') || @outvar || Vue::Helpers.default_outvar
+        buffer_name ||=
+          ((ct = Tilt.current_template) && ct.instance_variable_get(:@outvar)) ||
+          Thread.current.instance_variable_get(:@current_eoutvar) ||
+          Vue::Helpers.default_outvar
+        #puts "BUFFER thread-ivars: #{Thread.current.instance_variables}, thread-local-vars: #{Thread.current.send(:local_variables)}"
+        #puts "BUFFER chosen: #{buffer_name}, controller/view ivars: #{instance_variables}, controller/view local-vars: #{local_variables}"
+        #instance_variable_get(buffer_name)
+        instance_variable_get(buffer_name.to_s)
       end
       
       # TODO: Probbably need to pass root_name (and other options?) on to sub-components inside block.
       # Does vue even allow components in the block of a component call?
       # TODO: Are *args and locals being used?
-      def capture_html(*args, root_name:Vue::Helpers.root_name, buffer_name:nil, locals:{}, &block)
-        #puts "CAPTURE_HTML args: #{args}, root_name: #{root_name}, buffer_name:#{buffer_name}, locals:#{locals}"
+      def capture_html(*args, root_name:Vue::Helpers.root_name, locals:{}, &block)
+        #puts "CAPTURE_HTML args: #{args}, root_name: #{root_name}, locals:#{locals}"
         return unless block_given?
         
         # This is mostly for Rails. Are there other frameworks that would use this?
@@ -141,35 +154,39 @@ module Vue
         #puts "CAPTURE_HTML block info: block-local-vars:#{block.binding.local_variables}, block-ivars:#{block.binding.eval('instance_variables')}, controller-ivars:#{instance_variables}" if block_given?
         
         case current_template.to_s
-        when /erb/
-          #puts "Capturing ERB block."
+        when /erb/i
+          #puts "Capturing ERB block with eoutvar '#{get_current_eoutvar}'."
+          #puts "Tilt @outvar '#{Tilt.current_template.instance_variable_get(:@outvar)}'"
           #return(capture(*args, &block)) if respond_to?(:capture)
-          pos = buffer(buffer_name).to_s.size
-          rslt = yield(*args)
-          #puts "Capture_html erb buffer name '#{buffer_name}', yield result '#{rslt}'"
-          if pos = 0
-            rslt
+          existing_buffer = buffer
+          if existing_buffer
+            pos = existing_buffer.to_s.size
+            yield(*args)
+            modified_buffer = buffer
+            modified_buffer.to_s.slice!(pos..modified_buffer.to_s.size)
           else
-            buffer(buffer_name).to_s.slice!(pos..buffer(buffer_name).to_s.size)
+            yield(*args)
           end
-        when /haml/
+        when /haml/i
           #puts "Capturing HAML block."
           capture_haml(*args, &block)
         else
-          #puts "Yielding to generic template block."
+          #puts "Capturing (yielding) to generic template block."
           yield(*args)
         end
         
       end
       
-      def concat_content(text='', buffer_name:nil)
+      def concat_content(text='')
         return(text) if respond_to?(:capture)
         current_template = current_template_engine(true)
-        #puts "CONCAT_CONTENT current_template_engine: #{current_template_engine}."
+        #puts "CONCAT_CONTENT current_template: #{current_template}."
         case current_template.to_s
-        when /erb/ 
-          buffer(buffer_name).to_s << text
-        when /haml/
+        when /erb/i
+          #puts "Concating to ERB outvar '#{get_current_eoutvar}'"
+          #puts "Tilt @outvar '#{Tilt.current_template.instance_variable_get(:@outvar)}'"
+          buffer.to_s << text
+        when /haml/i
           haml_concat(text)
         else
           text
