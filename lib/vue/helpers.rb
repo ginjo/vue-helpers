@@ -17,7 +17,7 @@ module Vue
       root_name:               'vue-app',
       template_engine:         :erb, # This should not force template_engine, only recommend if no other can be found.
       template_literal:        true,
-      views_path:              'app/views',
+      views_path:              ['app/views'],
       vue_outvar:              '@_vue_outvar',
 
                                # These are ugly now, becuase I wanted to use double-quotes as the outter-quotes.
