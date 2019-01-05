@@ -17,7 +17,7 @@ module Vue
       root_name:               'vue-app',
       template_engine:         :erb, # This should not force template_engine, only recommend if no other can be found.
       template_literal:        true,
-      views_path:              ['app/views'],
+      views_path:              ['views', 'app/views'],
       vue_outvar:              '@_vue_outvar',
 
                                # These are ugly now, becuase I wanted to use double-quotes as the outter-quotes.
@@ -29,7 +29,10 @@ module Vue
       x_template_html:         "\n<script type=\"text/x-template\" id=\"\#{name}-template\">\#{template}</script>",
     }
     
-    @defaults.keys.each{|k| define_singleton_method(k){@defaults[k]}}
+    @defaults.keys.each do |k|
+      define_singleton_method(k){@defaults[k]}
+      define_singleton_method("#{k}="){|v| @defaults[k] = v}
+    end
     
     class << self
       attr_accessor :defaults      
