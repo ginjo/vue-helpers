@@ -5,7 +5,7 @@ require_relative 'vue_root'
 
 module Vue
 
-  Debug = []
+  #Debug = []
 
   module Helpers
     using CoreRefinements
@@ -20,7 +20,7 @@ module Vue
       
       # Always pass a context when creating a VueRepository.
       def initialize(context)
-        Debug << self
+        #Debug << self
         @context = context
       end
     
