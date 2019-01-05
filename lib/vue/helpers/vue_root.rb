@@ -149,4 +149,3 @@ module Vue
     end  # VueRoot
   end # Helpers
 end # Vue
-

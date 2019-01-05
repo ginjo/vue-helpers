@@ -1,4 +1,3 @@
-
 lib = File.expand_path("../lib", __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require "vue/helpers/version"
@@ -9,9 +8,9 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Ginjo"]
   spec.email         = ["wbr@mac.com"]
 
-  spec.summary       = %q{Vue helpers for Ruby apps.}
-  spec.description   = %q{Handles boilerplate code when adding Vue components to your controller.}
-  spec.homepage      = "https://github.com/ginjo"
+  spec.summary       = %q{VueJS helpers for Ruby apps.}
+  spec.description   = %q{Provides view helpers for easily adding VueJS code to your Ruby apps.}
+  spec.homepage      = "https://github.com/ginjo/vue-helpers"
   spec.license       = "MIT"
 
   # Prevent pushing this gem to RubyGems.org. To allow pushes either set the 'allowed_push_host'
@@ -38,7 +37,7 @@ Gem::Specification.new do |spec|
   
   spec.required_ruby_version = '>= 2.1'
   
-  spec.add_dependency "tilt", "~> 2.0.8"
+  spec.add_dependency "tilt", "~> 2.0.0"
 
   spec.add_development_dependency "bundler", "~> 1.16"
   spec.add_development_dependency "rake", "~> 10.0"

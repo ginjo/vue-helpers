@@ -199,4 +199,3 @@ module Vue
     end # VueObject
   end # Helpers
 end # Vue
-

@@ -217,4 +217,3 @@ module Vue
     
   end # Helpers
 end # Vue
-

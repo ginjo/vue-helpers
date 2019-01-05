@@ -81,4 +81,3 @@ module Vue
     end # VueComponent
   end # Helpers
 end # Vue
-
