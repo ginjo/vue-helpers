@@ -76,7 +76,7 @@ module Vue
       
       # Selects all related components.
       def components
-        repo.select{|k,v| v.type == 'component' && v.root_name == name}.values
+        repo.select{|k,v| v.type == 'component' && v.root_name == name}.values.compact.uniq{|v| v.name.to_s}
       end
       
       def component_names
