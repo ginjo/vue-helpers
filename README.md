@@ -2,45 +2,6 @@
 
 Vue-helpers is a Ruby gem that provides helper methods for adding [VueJS](https://vuejs.org) functionality to your Ruby applications. Vue-helpers makes it easy to build Vue components and applications without getting mired in the technicalities of how to package and deploy. Vue-helpers does not depend on server-side Javascript processing, just Ruby.
 
-#### What's it for?
-
-The goal of vue-helpers is to make it easy to use the primary features of VueJS in your front-end code with minimal setup and maintenance on the server side. Vue-helpers is not trying to replace the backend JS tools like Webpack and Vue Loader. It's just trying to provide an easier path to get up and running.
-
-#### Who's it for?
-
-I like to use VueJS for responsive front-end components, but I'm still building my application primarily in Ruby. I want to use Vue single-file-components, but I don't want to mess with backend Javascript configuration and maintenance.
-
-#### What's it look like?
-
-my\_view.html.erb:
-```erb
-  <%= vue_app do %>
-    <p>Everything in this block is part of the Vue app.</p>
-    <%= vue_component 'my-component', attributes: {color:'green', '@click':'doSomething'} do %>
-      <p>This block is passed to the component slot.</p>
-    <% end %>
-  <% end %>
-```
-my-component.vue.erb
-```html
-  <template>
-    <div>
-      This will read green: {{ color }}.
-      <slot>This will be replaced with the component-call block text.</slot>
-    </div>
-  </template>
-  <script>
-    export default {
-      props: ['color'],
-      methods: {
-        doSomething: (){alert('Yay!')}
-      }
-    }
-  </script>
-```
-
-The rendered html contains the Vue app, the 'my-component' template & JS object (rendered from my-component.vue.erb) and the root Vue app, all packaged with the appropriate html tags for the browser. See below for more examples.
-
 #### Features at a glance:
 
 * Parse single-file-component.vue files.
@@ -53,7 +14,53 @@ The rendered html contains the Vue app, the 'my-component' template & JS object 
 * Pass variables and data to Vue root and component JS objects.
 * Inline the rendered HTML/JS or serve it as an external script resource.
 
-The Vue-helpers gem officially supports Rails, Sinatra, and Rack applications using Erb, Haml, and Slim templating. In most cases, support for additional frameworks and templating libraries is easily integrated.
+
+#### Goals
+
+The goal of vue-helpers is to get the primary features of VueJS in your front-end code with minimal setup and maintenance on the server side. Vue-helpers is not trying to replace backend JS tools like Webpack and Vue Loader. Rather, it aims to provide an easier path to get up and running.
+
+
+#### Intended Audience
+
+* You want to use VueJS components to build a responsive front-end experience, but you're not yet ready to dive into the full Javascript backend setup.
+
+* Your main web application is coded in Ruby, but maybe not Rails, and you want to take advantage of VueJS on the front-end.
+
+* You have an existing monolithic VueJS front-end (just a Vue root with no components), and you want to split your code into manageable components that can easily be reused and rearranged.
+
+* You want your VueJS code to be processed through ERB, Haml, Slim, or any other templating engine supported by Tilt.
+
+
+#### Simple Example
+
+my\_view.html.erb:
+```erb
+  <%= vue_root do %>
+    <p>Everything in this block is part of the Vue app.</p>
+    <%= vue_component 'my-component', attributes: {color:'green', '@click':'doSomething'} do %>
+      <p>This block is passed to the component slot.</p>
+    <% end %>
+  <% end %>
+```
+my-component.vue.erb  *(a single-file-component)*
+```html
+  <template>
+    <div>
+      This will read green: {{ color }}.
+      <slot>This will be replaced with the component-call block text.</slot>
+    </div>
+  </template>
+  <script>
+    export default {
+      props: ['color'],
+      methods: {
+        doSomething: function () {alert('Yay!')}
+      }
+    }
+  </script>
+```
+
+The rendered html contains the Vue app, the 'my-component' template & JS object (rendered from my-component.vue.erb) and the root Vue app, all packaged with the appropriate html tags for the browser. See below for more examples.
 
 
 ## Requirements
@@ -61,6 +68,8 @@ The Vue-helpers gem officially supports Rails, Sinatra, and Rack applications us
 * Ruby 2.3 or greater. Earlier versions of Ruby may work but are not tested.
 
 * VueJS 2.0 or greater. Earlier versions of VueJS may work but are not tested.
+
+The Vue-helpers gem officially supports Rails, Sinatra, and Rack applications using Erb, Haml, and Slim templating. In most cases, support for additional frameworks and templating libraries is easily integrated.
 
 
 ## Installation
@@ -82,6 +91,7 @@ Or install it yourself as:
 Then make sure VueJS is loaded into your browser:
 
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
     
 #### Optional Requirements
 
@@ -153,7 +163,6 @@ config.ru
 ```
 
 
-
 ## Generic Example
 
 This generic example assumes you are using a rack-based framework and ERB templates.
@@ -197,7 +206,7 @@ views/layout.erb
       <script src="path/to/vuejs-2.0.js"></script>
     </head>
     <body>
-      <% vue_app do %>
+      <% vue_root do %>
         <h1>My Vue App</h1>
         <% yield %>
       <% end %>
@@ -212,7 +221,7 @@ Result sent to the browser:
     <script src="path/to/vuejs-2.0.js"></script>
   </head>
   <body>
-    <div id="vue-app">
+    <div id="vue-root">
       <h1>My Vue App</h1>
       <h2>My Page of Interesting Info</h2>
       <my-component message="Hello World!">
@@ -231,7 +240,7 @@ Result sent to the browser:
         props: ['message']
       };
       var VueApp = new Vue({
-        el: "#vue-app",
+        el: "#vue-root",
         components: {
           MyComponent: MyComponent
         }
@@ -247,7 +256,7 @@ After VueJS parses the script body in the browser:
     <script src="path/to/vuejs-2.0.js"></script>
   </head>
   <body>
-    <div id="vue-app">
+    <div id="vue-root">
       <h1>My Vue App</h1>
       <h2>My Page of Interesting Info</h2>
       <div>
@@ -273,12 +282,12 @@ There are only three methods in vue-helpers that you need to know:
     # Inserts/wraps block with Vue component tags...
   
   
-  vue_app(<root-app-name>, <options-hash>, &block)
+  vue_root(<root-app-name>, <options-hash>, &block)
   
     # Inserts/wraps block with Vue root-app tags...
   
   
-  vue_root(<root-app-name>)
+  vue_app(<root-app-name>)
   
     # Access the Ruby object model representing your Vue app(s) and components...
     
@@ -301,7 +310,7 @@ These methods parse your .vue files, insert Vue tags into your Ruby template, an
       external_resource:       false,
       minify:                  false,
       register_local:          false,
-      root_name:               'vue-app',
+      root_name:               'vue-root',
       template_engine:         :erb,
       template_literal:        true,
       views_path:              ['views', 'app/views'],
@@ -330,15 +339,18 @@ Shortcut readers/writers are also available for Vue::Helpers defaults:
   Vue::Helpers.register_local = true
 ```
 
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
 To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
 
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/ginjo/vue-helpers.
+
 
 ## License
 

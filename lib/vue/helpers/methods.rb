@@ -35,7 +35,7 @@ module Vue
       end
       alias_method :vue_repo, :vue_repository
       
-      def vue_root(root_name=nil, **options)
+      def vue_app(root_name=nil, **options)
         vue_repository.root(root_name, **options)
       end
   
@@ -54,7 +54,7 @@ module Vue
         
         # This should only pass args that are necessary to build the component object.
         # Tag-name and attributes are not relevant here.
-        component = vue_root(root_name).component(name, locals:locals, **options)
+        component = vue_app(root_name).component(name, locals:locals, **options)
         
         # Renders the per-call html block.
         # Pass tag_name, attributes, locals, and block.
@@ -75,15 +75,15 @@ module Vue
       # Builds vue html and js for return to browser.
       #
       # Returns (or concats if block given) rendered html and js.
-      def vue_app(root_name = Vue::Helpers.root_name,
+      def vue_root(root_name = Vue::Helpers.root_name,
           locals:    {},
           **options,
           &block
         )
         
-        #puts "\nvue_app '#{root_name}' with local-vars '#{local_variables.inject({}) { |c, i| c[i.to_s] = eval(i.to_s); c }}'"
+        #puts "\nvue_root '#{root_name}' with local-vars '#{local_variables.inject({}) { |c, i| c[i.to_s] = eval(i.to_s); c }}'"
         
-        root_app = vue_root(root_name, locals:locals, **options)
+        root_app = vue_app(root_name, locals:locals, **options)
         
         root_output = root_app.render(locals:locals, &block)
                 

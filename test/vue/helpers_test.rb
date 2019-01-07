@@ -24,16 +24,16 @@ describe Vue::Helpers::Methods do
     end
   end
   
-  describe 'vue_root' do
+  describe 'vue_app' do
     it 'returns a VueRoot instance with default root-name' do
-      vue_root_inst = Klas.new.vue_root
-      assert_kind_of(Vue::Helpers::VueRoot, vue_root_inst)
-      assert_equal vue_root_inst.name, Vue::Helpers.root_name
+      vue_app_inst = Klas.new.vue_app
+      assert_kind_of(Vue::Helpers::VueRoot, vue_app_inst)
+      assert_equal vue_app_inst.name, Vue::Helpers.root_name
     end
     
     it 'returns a VueRoot instance with given name' do
-      vue_root_inst = Klas.new.vue_root('my-vue-app')
-      assert_equal vue_root_inst.name, 'my-vue-app'
+      vue_app_inst = Klas.new.vue_app('my-vue-app')
+      assert_equal vue_app_inst.name, 'my-vue-app'
     end
   end
   
@@ -55,26 +55,26 @@ describe Vue::Helpers::Methods do
       vue_component_without_block
       assert_kind_of Vue::Helpers::VueComponent, mock_controller.vue_repository['test-component']
       assert_equal 'test-component', mock_controller.vue_repository['test-component'].name
-      assert_equal 'vue-app', mock_controller.vue_repository['test-component'].root_name
+      assert_equal 'vue-root', mock_controller.vue_repository['test-component'].root_name
     end
   end
   
-  describe 'vue_app' do    
+  describe 'vue_root' do    
     it 'returns js wrapped in html script block' do
-      #puts VUE_APP_HTML_WITHOUT_BLOCK
-      #puts mock_controller.vue_app
-      assert_equal VUE_APP_HTML_WITHOUT_BLOCK,  mock_controller.vue_app
+      #puts VUE_ROOT_HTML_WITHOUT_BLOCK
+      #puts mock_controller.vue_root
+      assert_equal VUE_ROOT_HTML_WITHOUT_BLOCK,  mock_controller.vue_root
     end
     
-    it 'prepends vue-app baseline script with inner-html block wrapped in div' do
-      assert_equal VUE_APP_HTML_WITH_BLOCK, mock_controller.vue_app(){'vue-app-inner-html'}
+    it 'prepends vue-root baseline script with inner-html block wrapped in div' do
+      assert_equal VUE_ROOT_HTML_WITH_BLOCK, mock_controller.vue_root(){'vue-root-inner-html'}
     end
     
     it 'includes component objects in script block' do
       mock_controller.vue_component('test-component')
-      output = mock_controller.vue_app
+      output = mock_controller.vue_root
       assert output.lines[4][/test-component inner text/]
-      assert output.lines[12][/var VueApp = new Vue.*vue-app.*TestComponent/]
+      assert output.lines[12][/var VueRoot = new Vue.*vue-root.*TestComponent/]
     end
   end
 end

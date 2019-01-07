@@ -25,7 +25,7 @@ module Vue
       custom_attr_reader *defaults.keys
       
       ###  Under Construction
-      # Renders the html block to replace ruby vue_app tags.
+      # Renders the html block to replace ruby vue_root tags.
       #def render(tag_name=nil, locals:{}, attributes:{}, &block) # From vue_component
       #def render(locals:{}, **options, &block)
       def render(locals:{}, &block)
@@ -38,15 +38,12 @@ module Vue
 
         root_script_output = case external_resource
           # TODO: Handle external_resource:<some-string> if necessary.
-          #when String; vue_app_external(root_app, root_name, locals:locals, **options)
           when true;
-            #vue_app_external(root_app, root_name, locals:locals, **options)  #->r{r==true && !template_literal}
             key = SecureRandom.urlsafe_base64(32)
             Vue::Helpers.cache_store[key] = compiled_js
             callback_prefix = Vue::Helpers.callback_prefix
             wrapper(:external_resource_html, callback_prefix:callback_prefix, key:key, **locals)
           else
-            #vue_app_inline(root_app, root_name, locals:locals, **options)
             wrapper(:inline_script_html, compiled:compiled_js, **locals)
         end
 
@@ -94,7 +91,7 @@ module Vue
         components.map{|c| c.get_x_template(locals) unless c.template_literal}.compact.join("\n")
       end      
       
-      # Compiles js output (components & root) for entire vue-app for this root object.
+      # Compiles js output (components & root) for entire vue app for this root object.
       # If template_literal is false, only the js object definitions are included.
       # In that case, the vue template html is left to be rendered in x-template blocks.
       # TODO: Clean up args, especially locals handling.
@@ -107,7 +104,7 @@ module Vue
         # #template_engine:context.current_template_engine,
         # register_local: Vue::Helpers.register_local,
         # minify: Vue::Helpers.minify,
-        # # Block may not be needed here, it's handled in 'vue_app'.
+        # # Block may not be needed here, it's handled in 'vue_root'.
         # &block
         
         # TODO: Make these locals accessible from anywhere within the root instance,

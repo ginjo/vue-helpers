@@ -11,7 +11,7 @@ module Vue
     # so we can't store the calling args OR the block here.
     #
     # But note that Vue root-apps can only be called once,
-    # so should we continue to store the vue-app calling args & block here,
+    # so should we continue to store the vue-root calling args & block here,
     # or pass them in at run-time as well? I think it ALL has to be dynamic.
     #
     class VueObject
@@ -157,7 +157,7 @@ module Vue
       end
 
 
-      ### Called from user-space by vue_root, vue_app, vue_compoenent.
+      ### Called from user-space by  vue_app, vue_root, vue_component.
 
       # Gets a defined wrapper, and interpolates it with the given locals & options.
       def wrapper(wrapper_name, **locals)   #, **wrapper_options)
