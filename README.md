@@ -1,32 +1,36 @@
 # Vue::Helpers
 
-Vue-helpers is a Ruby gem that provides helper methods for adding [VueJS](https://vuejs.org) functionality to your Ruby applications. Vue-helpers makes it easy to build Vue components and applications without getting mired in the technicalities of how to package and deploy. Vue-helpers does not depend on server-side Javascript processing, just Ruby.
+Vue-helpers is a Ruby gem that provides helper methods for adding [VueJS](https://vuejs.org) functionality to your Ruby applications. Vue-helpers makes it easy to build dynamic and responsive web applications using VueJS, without getting mired in the technicalities of how to package and deploy your front-end code. Vue-helpers does not depend on server-side Javascript processing, just Ruby.
+
+One of the great things about VueJS is that it helps keep your web page code clean and tidy, separating the CSS and JS from the HTML. Vue-helpers takes this a step further and allows you to build front-end objects while keeping Javascript and CSS out of your Ruby code. VueJS objects are declared using familiar Ruby templating structures like ERB, haml, etc.
 
 #### Features at a glance:
 
-* Parse single-file-component.vue files.
-* Automate Vue component and root boilerplate code.
-* Package and send Vue-related code to the client.
+* Package and send Vue-related code to the client, automatically, without any server-side JS processing.
 * Compose Vue components with your favorite Ruby templating system.
-* Use multiple Vue roots.
-* Manage global-vs-local component registration.
+* Automate Vue component and root boilerplate code.
 * Customize the boilerplate code with your own templates.
 * Pass variables and data to Vue root and component JS objects.
+* Use multiple Vue roots.
+* Manage global-vs-local component registration.
+* Parse single-file-component.vue files.
 * Inline the rendered HTML/JS or serve it as an external script resource.
 
 
 #### Goals
 
-The goal of vue-helpers is to get the primary features of VueJS in your front-end code with minimal setup and maintenance on the server side. Vue-helpers is not trying to replace backend JS tools like Webpack and Vue Loader. Rather, it aims to provide an easier path to get up and running.
+The goal of vue-helpers is to use the primary features of VueJS in your front-end code with minimal setup and maintenance on the server side. VueJS can be tremendously helpful, even without using Webpack and Vue Loader. Vue-helpers leverages Ruby's extensive and easy-to-use templating features to bring out the inherent good in VueJS and provides an easier path to get up and running with VueJS.
+
+Once you start using VueJS with Ruby and vue-helpers, you may wonder how you got along without. And you may never need to install a server-side Javascript processor.
 
 
 #### Intended Audience
 
 * You want to use VueJS components to build a responsive front-end experience, but you're not yet ready to dive into the full Javascript backend setup.
 
-* Your main web application is coded in Ruby, but maybe not Rails, and you want to take advantage of VueJS on the front-end.
+* Your main web application is coded in Ruby, maybe Rails but maybe not, and you want to take advantage of VueJS on the front-end.
 
-* You have an existing monolithic VueJS front-end (just a Vue root with no components), and you want to split your code into manageable components that can easily be reused and rearranged.
+* You have an existing monolithic VueJS front-end (just a Vue root with no components), and you want to split your code into manageable components that can be easily reused and rearranged.
 
 * You want your VueJS code to be processed through ERB, Haml, Slim, or any other templating engine supported by Tilt.
 
@@ -36,13 +40,13 @@ The goal of vue-helpers is to get the primary features of VueJS in your front-en
 my\_view.html.erb:
 ```erb
   <%= vue_root do %>
-    <p>Everything in this block is part of the Vue app.</p>
+    <p>Everything in this block will be part of the Vue app in the user's browser.</p>
     <%= vue_component 'my-component', attributes: {color:'green', '@click':'doSomething'} do %>
       <p>This block is passed to the component slot.</p>
     <% end %>
   <% end %>
 ```
-my-component.vue.erb  *(a single-file-component)*
+my-component.vue.erb  *(a VueJS single-file-component)*
 ```html
   <template>
     <div>
@@ -69,7 +73,7 @@ The rendered html contains the Vue app, the 'my-component' template & JS object 
 
 * VueJS 2.0 or greater. Earlier versions of VueJS may work but are not tested.
 
-The Vue-helpers gem officially supports Rails, Sinatra, and Rack applications using Erb, Haml, and Slim templating. In most cases, support for additional frameworks and templating libraries is easily integrated.
+The vue-helpers gem officially supports Rails, Sinatra, and Rack applications using Erb, Haml, and Slim templating. Other frameworks and template engines may work without issues but have not (yet) been tested. In most cases, support for additional frameworks and template engines is easily integrated.
 
 
 ## Installation
@@ -166,7 +170,8 @@ config.ru
 ## Generic Example
 
 This generic example assumes you are using a rack-based framework and ERB templates.
-Note that neither Rack nor ERB are required to use the vue-helpers gem.
+Note that neither Rack nor ERB are strictly needed. You can use the vue-helpers gem
+without them.
 
 your-app-helpers.rb
 ```ruby
