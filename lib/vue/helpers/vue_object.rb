@@ -1,12 +1,14 @@
 require_relative 'utilities'
 require_relative 'helper_refinements'
 
+
 module Vue
   module Helpers
     using CoreRefinements
     using HelperRefinements
   
-
+    # This is the base object used to define VueComponent and VueRoot classes.
+    #
     # NOTE: Vue components can be called MULTIPLE times,
     # so we can't store the calling args OR the block here.
     #
@@ -162,7 +164,7 @@ module Vue
       # Gets a defined wrapper, and interpolates it with the given locals & options.
       def wrapper(wrapper_name, **locals)   #, **wrapper_options)
         #Vue::Helpers.send(wrapper_name).interpolate(**wrapper_options.merge(locals))
-        Vue::Helpers.send(wrapper_name).interpolate(locals)
+        Vue::Helpers.send(wrapper_name).interpolate(**locals)
       end
       
       def js_var_name
@@ -182,16 +184,19 @@ module Vue
         case
           when
             ( val = instance_variable_get("@#{attribute}"); !val.nil? );
+            
             val
           when
             type != 'root' &&
             root.respond_to?(attribute) &&
             ( val = root.send(attribute, use_default); !val.nil? );
+            
             val
           when
             use_default &&
             Vue::Helpers.respond_to?(attribute) &&
             ( val = Vue::Helpers.send(attribute); !val.nil? );
+            
             val
         end
       end

@@ -2,7 +2,7 @@ require 'uglifier'
 require_relative 'utilities'
 
 # This file contains the bulk of vue-helpers functions.
-# They constructed here as a module of refinements,
+# They are constructed here as a module of refinements,
 # and used in the main 'controller'. However, being refinements,
 # they are invisible and inaccessible in user-space.
 #
@@ -23,7 +23,7 @@ module Vue
     end
 
     # This block of methods is used as refinements in Ruby >= 2.4,
-    # and is used as a regular module methods (private) in Ruby < 2.4.
+    # and is used as regular module methods (private) in Ruby < 2.4.
     # This is done to accommodate a wider range of Ruby versions,
     # since Ruby < 2.4 doesn't allow refining of Modules.
     # See if-then block below.
@@ -117,6 +117,7 @@ module Vue
       # See https://gist.github.com/seanami/496702
       # TODO: These need to handle haml & slim as well.
       
+      # This appears to only be used for dev & testing.
       def get_current_eoutvar
         Thread.current.instance_variable_get(:@current_eoutvar)
       end
@@ -124,18 +125,36 @@ module Vue
       # Returns any buffer (even if not defined).
       def buffer(buffer_name = nil)
         #@_out_buf
-        #buffer_name ||= Tilt.current_template.instance_variable_get('@outvar') || @outvar || Vue::Helpers.default_outvar
         buffer_name ||=
           ((ct = Tilt.current_template) && ct.instance_variable_get(:@outvar)) ||
           Thread.current.instance_variable_get(:@current_eoutvar) ||
           Vue::Helpers.default_outvar
-        #puts "BUFFER thread-ivars: #{Thread.current.instance_variables}, thread-local-vars: #{Thread.current.send(:local_variables)}"
-        #puts "BUFFER chosen: #{buffer_name}, controller/view ivars: #{instance_variables}, controller/view local-vars: #{local_variables}"
-        #instance_variable_get(buffer_name)
-        instance_variable_get(buffer_name.to_s)
+        
+        # Adds '@' to beginning of buffer_name is not exist yet.
+        # Only added this to make tests pass, but not really solved yet.
+        buffer_name =~ /^\@/ || buffer_name = "@#{buffer_name}"
+        
+        # puts "BUFFER thread-ivars: #{Thread.current.instance_variables}, thread-local-vars: #{Thread.current.send(:local_variables)}"
+        # puts "BUFFER chosen: #{buffer_name}, controller/view ivars: #{instance_variables}, controller/view local-vars: #{local_variables}"
+        # puts "BUFFER @outvar: #{ct.instance_variable_get(:@outvar)}"
+        # puts "BUFFER @current_eoutvar: #{Thread.current.instance_variable_get(:@current_eoutvar)}"
+        # puts "TILT: #{ct.instance_variables}"
+        # puts "THREAD: #{Thread.current.instance_variables}"
+        # puts "IVARS: #{instance_variables}"
+        # puts "@_erbout: #{@_erbout}"
+        
+        # Unfreezes buffer value, if frozen. Don't know where this issue came from,
+        # but it started in ruby 2.7. Probably burried deep in some gem dependency.
+        #
+        iv_val = instance_variable_get(buffer_name.to_s)
+        if iv_val.frozen?
+          instance_variable_set(buffer_name.to_s, iv_val.dup)
+        end
+        instance_variable_get(buffer_name.to_s) || ''
       end
       
-      # TODO: Probbably need to pass root_name (and other options?) on to sub-components inside block.
+      # Captures html, or whatever, from given block.
+      # TODO: Probably need to pass root_name (and other options?) on to sub-components inside block.
       # Does vue even allow components in the block of a component call?
       # TODO: Are *args and locals being used?
       def capture_html(*args, root_name:Vue::Helpers.root_name, locals:{}, &block)
@@ -152,27 +171,45 @@ module Vue
         current_template = current_template_engine(true)
         #puts "CAPTURE_HTML current_template: #{current_template}."
         #puts "CAPTURE_HTML block info: block-local-vars:#{block.binding.local_variables}, block-ivars:#{block.binding.eval('instance_variables')}, controller-ivars:#{instance_variables}" if block_given?
+        #puts "CAPTURE_HTML block: #{block.call(*args).to_s}"
         
+        # TODO: double-check & compare this section with older versions to see what
+        # kind of changes were recently made (as of 2022-04-27).
         case current_template.to_s
         when /erb/i
           #puts "Capturing ERB block with eoutvar '#{get_current_eoutvar}'."
           #puts "Tilt @outvar '#{Tilt.current_template.instance_variable_get(:@outvar)}'"
-          #return(capture(*args, &block)) if respond_to?(:capture)
-          existing_buffer = buffer
-          if existing_buffer
-            pos = existing_buffer.to_s.size
+          return(capture(*args, &block)) if respond_to?(:capture)
+          #
+          # Why was this done this way? Is it necessary?
+          # I made it simpler below, but not sure if that right.
+          #
+          #puts "\nCapturing ERB block within #{self.class}, buffer-size: #{buffer.to_s.size}, existing_buffer: '#{buffer.to_s[24]}'"
+          if buffer.to_s.size > 0
+            # existing_buffer = buffer
+            # pos = existing_buffer.to_s.size
+            # yield(*args)
+            # #block.call(*args)
+            # modified_buffer = buffer
+            # puts "Capturing ERB block, modified-buffer-size: #{modified_buffer.to_s.size}"
+            # modified_buffer.to_s.slice!(pos..modified_buffer.to_s.size)
+            buff_pos = buffer.to_s.size
             yield(*args)
-            modified_buffer = buffer
-            modified_buffer.to_s.slice!(pos..modified_buffer.to_s.size)
+            #block.call(*args)
+            #puts "Capturing ERB block, modified buffer size: #{buffer.to_s.size}"
+            buffer.to_s.slice!(buff_pos..buffer.to_s.size)
           else
             yield(*args)
+            #block.call(*args)
           end
+          #block.call(*args).to_s if block_given?
         when /haml/i
-          #puts "Capturing HAML block."
+          #puts "Capturing HAML block, buffer-size: #{buffer.to_s.size}"
           capture_haml(*args, &block)
         else
-          #puts "Capturing (yielding) to generic template block."
+          #puts "Capturing (yielding) to generic template block, buffer-size: #{buffer.to_s.size}"
           yield(*args)
+          #block.call(*args)
         end
         
       end
@@ -180,11 +217,15 @@ module Vue
       def concat_content(text='')
         return(text) if respond_to?(:capture)
         current_template = current_template_engine(true)
-        #puts "CONCAT_CONTENT current_template: #{current_template}."
+        # puts "CONCAT_CONTENT current_template: #{current_template}"
+        # puts "CONCAT_CONTENT buffer: #{buffer}"
         case current_template.to_s
         when /erb/i
-          #puts "Concating to ERB outvar '#{get_current_eoutvar}'"
-          #puts "Tilt @outvar '#{Tilt.current_template.instance_variable_get(:@outvar)}'"
+          # puts "Concating to ERB outvar '#{get_current_eoutvar}'"
+          # puts "Tilt @outvar '#{Tilt.current_template.instance_variable_get(:@outvar)}'"
+          # puts "RESPOND to :capture ? #{respond_to?(:capture)}"
+          
+          # Getting FrozenError here in ruby 2.7. See buffer() method.
           buffer.to_s << text
         when /haml/i
           haml_concat(text)

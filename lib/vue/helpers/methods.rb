@@ -21,7 +21,7 @@ module Vue
         # If Rails
         if other.name[/Helper/] && Module.const_defined?(:ActionView)
           # TODO: This should be logger.debug.
-          puts "#{other} including ActionView::Helpers::CaptureHelper"
+          #puts "#{other} including ActionView::Helpers::CaptureHelper"
           include ActionView::Helpers::CaptureHelper
         end
         
@@ -29,7 +29,7 @@ module Vue
       end
 
       def vue_repository
-        @vue_repository ||= VueRepository.new(context=self)
+        @vue_repository ||= VueRepository.new(self)
         #puts "Getting vue_repository #{@vue_repository.class} with keys: #{@vue_repository.keys}"
         @vue_repository
       end
@@ -62,7 +62,8 @@ module Vue
         
         # Concat the content if block given, otherwise just return the content.
         if block_given?
-          #puts "Vue_component concating content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"
+          #puts "\nVue_component concating content for '#{name}'  #{component_output[0..32].gsub(/\n/, ' ')}"
+          #puts "\nVue_component concating content for '#{name}'  block: #{block.call.to_s[0..32]}"
           concat_content(component_output)
         else
           #puts "Vue_component returning content for '#{name}'"  #: #{component_output[0..32].gsub(/\n/, ' ')}"
@@ -76,7 +77,7 @@ module Vue
       #
       # Returns (or concats if block given) rendered html and js.
       def vue_root(root_name = Vue::Helpers.root_name,
-          locals:    {},
+          locals: {},
           **options,
           &block
         )

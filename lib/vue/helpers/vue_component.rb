@@ -52,13 +52,13 @@ module Vue
       #def to_component_js(register_local:Vue::Helpers.register_local, template_literal:Vue::Helpers.template_literal, locals:{})  #, **options)
       def to_component_js(locals:{})
           # The above **options are not used yet, but need somewhere to catch extra stuff.
-          template_spec = template_literal ? "\`#{parsed_template(locals).to_s.escape_backticks}\`" : "'##{name}-template'"
+          template_spec = template_literal ? "\`#{parsed_template(**locals).to_s.escape_backticks}\`" : "'##{name}-template'"
           js_output = register_local \
             ? 'var #{name} = {template: #{template_spec}, \2;'
             : 'var #{name} = Vue.component("#{name}", {template: #{template_spec}, \2);'  # ) << ")"
           
           # TODO: Make escaping backticks optional, as they could break user templates with nested backtick blocks, like ${``}.
-          _parsed_script = parsed_script(locals)
+          _parsed_script = parsed_script(**locals)
           _parsed_script.gsub( 
             /export\s+default\s*(\{|Vue.component\s*\([^\{]*\{)(.*$)/m,
             js_output
@@ -67,7 +67,7 @@ module Vue
       
       # TODO: Follow this backwards/upstream to determine if parsed_template, parsed_script, and locals are being handled correctly.
       def get_x_template(**locals)
-        wrapper(:x_template_html, name:name, template:parsed_template(locals), **locals)
+        wrapper(:x_template_html, name:name, template:parsed_template(**locals), **locals)
       end
       
       # def template_literal?

@@ -47,7 +47,7 @@ module Vue
             wrapper(:inline_script_html, compiled:compiled_js, **locals)
         end
 
-        root_script_output.prepend(components_x_template(locals).to_s) unless template_literal
+        root_script_output.prepend(components_x_template(**locals).to_s) unless template_literal
         
         # TODO: Are locals being passed properly here?
         if block_given?
@@ -88,7 +88,7 @@ module Vue
       
       # Returns HTML string of component vue templates in x-template format.
       def components_x_template(**locals)
-        components.map{|c| c.get_x_template(locals) unless c.template_literal}.compact.join("\n")
+        components.map{|c| c.get_x_template(**locals) unless c.template_literal}.compact.join("\n")
       end      
       
       # Compiles js output (components & root) for entire vue app for this root object.
@@ -125,7 +125,7 @@ module Vue
         #app_js << (
         #output = components_js(locals:{}, **options) << "\n" << (
         output = components_js(locals:{}) << "\n" << (
-          parsed_script(locals) ||
+          parsed_script(**locals) ||
           wrapper(:root_object_js, **locals)  #, **options)
         )
         

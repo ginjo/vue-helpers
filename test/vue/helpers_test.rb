@@ -26,27 +26,27 @@ describe Vue::Helpers::Methods do
   
   describe 'vue_app' do
     it 'returns a VueRoot instance with default root-name' do
-      vue_app_inst = Klas.new.vue_app
-      assert_kind_of(Vue::Helpers::VueRoot, vue_app_inst)
-      assert_equal vue_app_inst.name, Vue::Helpers.root_name
+      vue_app_inst = mock_controller.vue_app #Klas.new.vue_app
+      assert_kind_of Vue::Helpers::VueRoot, vue_app_inst
+      assert_equal Vue::Helpers.root_name, vue_app_inst.name
     end
     
     it 'returns a VueRoot instance with given name' do
-      vue_app_inst = Klas.new.vue_app('my-vue-app')
-      assert_equal vue_app_inst.name, 'my-vue-app'
+      vue_app_inst = mock_controller.vue_app('my-vue-app') #Klas.new.vue_app('my-vue-app')
+      assert_equal 'my-vue-app', vue_app_inst.name
     end
   end
   
   describe 'vue_component' do
     let(:vue_component_without_block) { mock_controller.vue_component('test-component', attributes:{color:'red'}) }
-    let(:vue_component_with_block) { mock_controller.vue_component('test-component', attributes:{color:'red'}) { 'inner-html text block' } }
+    let(:vue_component_with_block) { mock_controller.vue_component('test-component', attributes:{color:'red'}) { 'inner-html-text-block' } }
     
     it 'returns component html block' do
-      assert_equal(vue_component_without_block, '<test-component color="red"></test-component>')
+      assert_equal('<test-component color="red"></test-component>', vue_component_without_block)
     end
     
     it 'returns component html block with inner text if block passed' do
-      assert_equal '<test-component color="red">inner-html text block</test-component>',
+      assert_equal '<test-component color="red">inner-html-text-block</test-component>',
         vue_component_with_block
     end
     
